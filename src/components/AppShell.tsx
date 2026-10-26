@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import FreshnessIndicator from "./FreshnessIndicator";
 import { DATA_AS_OF } from "../lib/types";
@@ -15,14 +15,38 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const [theme, setTheme] = useState<"light" | "dark">("light");
   const [source, setSource] = useState<SourceState | null>(null);
   const [accounts, setAccounts] = useState<{ id: string; displayName: string; status: string }[] | null>(null);
+  const [me, setMe] = useState<{ name: string; email: string; role: string } | null>(null);
+  const router = useRouter();
+  const isAuthPage = path === "/login" || path === "/register";
   useEffect(() => {
+    if (isAuthPage) return;
     fetch("/api/source").then((r) => r.json()).then((j) => setSource(j.data)).catch(() => undefined);
     fetch("/api/accounts").then((r) => r.json()).then((j) => setAccounts(j.data)).catch(() => undefined);
-  }, []);
+    fetch("/api/auth/me").then(async (r) => {
+      if (r.status === 401) { router.replace("/login"); return; }
+      const j = await r.json().catch(() => ({}));
+      if (j.data) setMe(j.data);
+    }).catch(() => undefined);
+  }, [isAuthPage, router]);
+  async function logout() {
+    await fetch("/api/auth/logout", { method: "POST" }).catch(() => undefined);
+    router.push("/login"); router.refresh();
+  }
   const live = source?.source === "live";
   const notConnected = (source?.providers || []).filter((p) => !p.configured).map((p) => p.provider);
   useEffect(() => { document.documentElement.setAttribute("data-theme", theme); }, [theme]);
   const crumb = path === "/" ? "Overview" : path.slice(1).split("-").map((s) => s[0].toUpperCase() + s.slice(1)).join(" ");
+  // Auth pages get a bare shell: no nav, no banners, no data fetches above.
+  if (isAuthPage) {
+    return (
+      <div>
+        <header style={{ height: 56, display: "flex", alignItems: "center", padding: "0 16px", background: "var(--bg-surface)", borderBottom: "1px solid var(--border-default)" }}>
+          <Link href="/" style={{ textDecoration: "none", color: "var(--text-primary)", fontWeight: 800, fontSize: 18 }}>▦ Ledger</Link>
+        </header>
+        <main style={{ padding: 24 }}>{children}</main>
+      </div>
+    );
+  }
   return (
     <div>
       <header style={{ height: 56, display: "flex", alignItems: "center", gap: 16, padding: "0 16px", background: "var(--bg-surface)", borderBottom: "1px solid var(--border-default)", position: "sticky", top: 0, zIndex: 10 }}>
@@ -31,7 +55,14 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         <div style={{ flex: 1 }} />
         <FreshnessIndicator freshness="Fresh" monthState="Estimated" reconciliation="Reconciled" dataAsOf={DATA_AS_OF} />
         <button className="btn-ghost" onClick={() => setTheme(theme === "light" ? "dark" : "light")} aria-label="Toggle dark theme">{theme === "light" ? "☾ Dark" : "☀ Light"}</button>
-        <span className="small">FinOps Manager ▾</span>
+        {me ? (
+          <span className="small">
+            {me.name} ({me.role}){" "}
+            <button className="btn-ghost" onClick={logout} style={{ padding: "4px 10px" }}>Log out</button>
+          </span>
+        ) : (
+          <Link href="/login" className="small">Sign in</Link>
+        )}
       </header>
       <div style={{ display: "flex" }}>
         <nav aria-label="Main" style={{ width: 240, flexShrink: 0, padding: 16, borderRight: "1px solid var(--border-default)", minHeight: "calc(100vh - 56px)" }}>

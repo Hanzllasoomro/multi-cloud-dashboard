@@ -132,9 +132,41 @@ lifecycle: see the "Account lifecycle" section in docs/REAL_ACCOUNTS.md.
 Limitation: the account store is in-memory in this version and resets on
 server restart; a database replaces that one module later.
 
+## Authentication & authorization (v1.3)
+
+Real auth, not a demo login screen. `/login` and `/register` are built from
+shadcn-style UI components (`src/components/ui/` — same API as shadcn,
+implemented on Ledger CSS tokens, **not** a shadcn CLI install and no
+Tailwind migration; see `src/components/ui/README.md`).
+
+- **First account = Owner.** Register the first user and it becomes Owner
+  automatically; later registrations start as Viewers, promotable in
+  **Settings > Team members** (Owner/Admin only; demoting the last Owner is
+  blocked by the API).
+- **Passwords:** minimum 12 characters, common passwords rejected, hashed
+  with Node `scrypt` + per-user salt — never stored in plaintext, never
+  returned or logged.
+- **Sessions:** random 256-bit tokens, server-side only, `httpOnly` +
+  `SameSite=Lax` cookie (`Secure` in production), 24h absolute expiry,
+  logout deletes the session. Login is rate-limited (5 failures per
+  email+IP in 15 min → 429) and failures are generic so emails can't be
+  enumerated.
+- **Authorization is server-side** (`src/lib/permissions.ts` + middleware +
+  route guards): unauthenticated → 401, forbidden role → 403. Account
+  writes/test need Owner/Admin/FinOps Manager; audit needs
+  Owner/Admin/Auditor; all other APIs need any signed-in user. Viewers see
+  accounts read-only in Settings (no add/edit/delete buttons).
+- **Hackathon demo access:** start with `LEDGER_DEMO_AUTH=true` to enable
+  "Continue with demo account" on `/login` — always a **Viewer** session,
+  never Owner. Keep it **off** for real deployments.
+- **Not yet built (documented, not faked):** MFA/TOTP, email password
+  reset (reset is via an admin until then), SSO/SCIM, and a real database
+  — users, sessions, and accounts are in-memory in this version and reset
+  on server restart. Full threat model: `docs/SECURITY.md`.
+
 ## Routes
 
-Pages: `/` overview, `/explorer`, `/connections`, `/budgets`, `/anomalies`,
+Pages: `/` overview, `/login`, `/register`, `/demo`, `/explorer`, `/connections`, `/budgets`, `/anomalies`,
 `/forecast`, `/commitments`, `/recommendations`, `/allocation`, `/reports`,
 `/data-health`, `/settings`.
 APIs: `/api/query` (accepts `?accountId=` managed ids and `?accounts=`
@@ -142,7 +174,8 @@ sub-account names; paused accounts excluded), `/api/accounts`,
 `/api/accounts/[id]`, `/api/accounts/[id]/test`, `/api/accounts/audit`,
 `/api/connections`, `/api/budgets`, `/api/anomalies`,
 `/api/forecast`, `/api/recommendations`, `/api/commitments`, `/api/data-health`,
-`/api/source`.
+`/api/source`, `/api/auth/register`, `/api/auth/login`, `/api/auth/logout`,
+`/api/auth/me`, `/api/auth/demo`, `/api/users`, `/api/users/[id]`.
 
 ## Licence
 

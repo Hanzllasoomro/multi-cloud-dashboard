@@ -3,15 +3,12 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import DataTable from "../../components/DataTable";
 import Badge from "../../components/Badge";
+import { ROLE_MATRIX, ROLES as ALL_ROLES } from "../../lib/permissions";
 
-const ROLES = [
-  { role: "Owner", plan: "✓", members: "✓", connections: "✓", data: "✓", budgets: "✓", allocation: "✓", exports: "✓", api: "✓", audit: "✓" },
-  { role: "Admin", plan: "—", members: "✓", connections: "✓", data: "✓", budgets: "✓", allocation: "✓", exports: "✓", api: "✓", audit: "✓" },
-  { role: "FinOps Manager", plan: "—", members: "—", connections: "✓", data: "✓", budgets: "✓", allocation: "✓", exports: "✓", api: "✓", audit: "—" },
-  { role: "Analyst", plan: "—", members: "—", connections: "—", data: "✓", budgets: "✓", allocation: "—", exports: "✓", api: "—", audit: "—" },
-  { role: "Viewer", plan: "—", members: "—", connections: "—", data: "Scoped", budgets: "Own", allocation: "—", exports: "Scoped", api: "—", audit: "—" },
-  { role: "Auditor", plan: "—", members: "—", connections: "—", data: "✓", budgets: "—", allocation: "—", exports: "✓", api: "—", audit: "✓" },
-];
+const ROLES = ROLE_MATRIX.map((r) => ({
+  role: r.role, plan: r.plan, members: r.members, connections: r.connections, data: r.data,
+  budgets: r.budgets, allocation: r.allocation, exports: r.exports, api: r.api, audit: r.audit,
+}));
 const LEGACY_AUDIT = [
   { when: "2026-10-26 09:12", who: "finops@acme.example", what: "Budget created: Total cloud spend" },
   { when: "2026-10-25 17:40", who: "admin@acme.example", what: "Connection health check: Azure → Degraded" },
@@ -36,15 +33,31 @@ export default function Settings() {
   const [err, setErr] = useState("");
   const [testResult, setTestResult] = useState<{ name: string; passed: number; total: number; mode: string; checklist: Checklist[] } | null>(null);
   const [removing, setRemoving] = useState<Account | null>(null);
+  const [me, setMe] = useState<{ id: string; email: string; name: string; role: string } | null>(null);
+  const [users, setUsers] = useState<{ id: string; email: string; name: string; role: string; createdAt: string }[]>([]);
+  const [usersNote, setUsersNote] = useState("");
+  const canManageAccounts = !!me && ["Owner", "Admin", "FinOps Manager"].includes(me.role);
+  const canManageMembers = !!me && ["Owner", "Admin"].includes(me.role);
   const [confirmText, setConfirmText] = useState("");
   const [dataChoice, setDataChoice] = useState<"keep" | "purge">("keep");
 
   const refresh = useCallback(async () => {
     try {
-      const [a, u] = await Promise.all([fetch("/api/accounts").then((r) => r.json()), fetch("/api/accounts/audit").then((r) => r.json())]);
+      const [a, u, m] = await Promise.all([
+        fetch("/api/accounts").then((r) => r.json()),
+        fetch("/api/accounts/audit").then((r) => r.json()).catch(() => ({})),
+        fetch("/api/auth/me").then((r) => r.json()).catch(() => ({})),
+      ]);
       setAccounts(a.data || []);
       setAudit([...(u.data || []), ...LEGACY_AUDIT]);
+      if (m.data) setMe(m.data);
     } catch { /* keep previous state; table shows empty-state note below */ }
+    try {
+      const r = await fetch("/api/users");
+      const j = await r.json().catch(() => ({}));
+      if (r.ok) { setUsers(j.data || []); setUsersNote(""); }
+      else setUsersNote("Team members are visible to Owner and Admin only.");
+    } catch { setUsersNote("Team members are visible to Owner and Admin only."); }
   }, []);
   useEffect(() => { refresh(); }, [refresh]);
 
@@ -98,6 +111,14 @@ export default function Settings() {
       `Account removed (data: ${dataChoice}).`);
     if (j) { setRemoving(null); setConfirmText(""); }
   }
+  async function changeRole(id: string, role: string) {
+    setErr(""); setMsg("");
+    const r = await fetch(`/api/users/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ role }) });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) { setErr(j.error || "Role change failed"); return; }
+    setMsg("Role updated.");
+    await refresh();
+  }
   const pausedBroken = accounts.filter((a) => a.status === "Paused" || a.status === "Broken");
 
   return (
@@ -134,10 +155,12 @@ export default function Settings() {
                 <td>{a.lastSync}</td>
                 <td>{a.mode}</td>
                 <td style={{ whiteSpace: "nowrap" }}>
-                  <button className="btn-ghost" onClick={() => startEdit(a)}>Edit</button>{" "}
-                  <button className="btn-ghost" onClick={() => togglePause(a)}>{a.status === "Paused" ? "Resume" : "Pause"}</button>{" "}
-                  <button className="btn-ghost" onClick={() => test(a)}>Test</button>{" "}
-                  <button className="btn-ghost" onClick={() => { setRemoving(a); setConfirmText(""); }}>Remove</button>
+                  {canManageAccounts ? (<>
+                    <button className="btn-ghost" onClick={() => startEdit(a)}>Edit</button>{" "}
+                    <button className="btn-ghost" onClick={() => togglePause(a)}>{a.status === "Paused" ? "Resume" : "Pause"}</button>{" "}
+                    <button className="btn-ghost" onClick={() => test(a)}>Test</button>{" "}
+                    <button className="btn-ghost" onClick={() => { setRemoving(a); setConfirmText(""); }}>Remove</button>
+                  </>) : (<span className="caption">Read-only for your role</span>)}
                 </td>
               </tr>
             ))}</tbody>
@@ -165,6 +188,7 @@ export default function Settings() {
             <button className="btn-ghost" onClick={() => setRemoving(null)}>Cancel</button>
           </section>
         )}
+        {canManageAccounts ? (<>
         <h3 style={{ marginTop: 24 }}>{editing ? "Edit account (name + scope; provider and identifier cannot change)" : "Add account"}</h3>
         <form onSubmit={editing ? submitEdit : submitAdd} style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
           <label className="small">Provider <select className="select" value={form.provider} disabled={!!editing} onChange={(e) => setForm({ ...form, provider: e.target.value })}><option>AWS</option><option>Azure</option><option>GCP</option></select></label>
@@ -178,6 +202,29 @@ export default function Settings() {
           {editing && <button className="btn-ghost" type="button" onClick={() => { setEditing(null); setForm(EMPTY_FORM); }}>Cancel edit</button>}
         </form>
         <p className="caption">No secret fields: for live mode, credentials are set as server environment variables only (docs/REAL_ACCOUNTS.md). New accounts start Pending — run Test connection to validate them. Scope sub-accounts are the names that appear in cost rows (demo: prod-aws, staging-aws, prod-azure-sub, prod-gcp-project); pausing an account excludes exactly those rows from query totals.</p>
+        </>) : (<p className="caption">Account management (add, edit, pause, test, remove) requires Owner, Admin, or FinOps Manager. Your role ({me?.role || "unknown"}) can view accounts read-only.</p>)}
+      </section>
+
+      <section className="card" style={{ marginBottom: 16 }}>
+        <h2>Team members</h2>
+        <p className="small">
+          Registered users. The first registered user is the Owner; later registrations start as Viewers.
+          {canManageMembers ? " Change a role below — demoting the last Owner is blocked by the API." : " Role changes are for Owner and Admin only."}
+        </p>
+        {usersNote && <p className="caption">{usersNote}</p>}
+        {users.length === 0 ? <p className="small">No team members listed.</p> : (
+          <DataTable columns={[
+            { key: "n", header: "Name", render: (r) => r.name },
+            { key: "e", header: "Email", render: (r) => r.email },
+            { key: "r", header: "Role", render: (r) => canManageMembers ? (
+              <select className="select" value={r.role} onChange={(e) => changeRole(r.id, e.target.value)} aria-label={`Role for ${r.email}`}>
+                {ALL_ROLES.map((role) => <option key={role}>{role}</option>)}
+              </select>
+            ) : r.role },
+            { key: "c", header: "Created", render: (r) => r.createdAt },
+          ]} rows={users} />
+        )}
+        <p className="caption">Password reset is via an admin until email reset exists (see docs/SECURITY.md). Demo accounts (LEDGER_DEMO_AUTH) are always Viewers.</p>
       </section>
 
       <section className="card" style={{ marginBottom: 16 }}>

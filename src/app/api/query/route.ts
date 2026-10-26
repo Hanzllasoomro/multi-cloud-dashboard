@@ -6,10 +6,12 @@ import type { CostBasis, GroupKey, Provider } from "../../../lib/types";
 import { getDataSource } from "../../../lib/providers/source";
 import { fetchLiveRows } from "../../../lib/providers/index";
 import { excludePausedRows, expandAccountIds, listAccounts } from "../../../lib/accounts";
+import { requireUser } from "../../../lib/auth-guard";
 // GET /api/query?groupBy=service&provider=AWS&start=2025-11-01&end=2026-10-26&costBasis=billed&topN=10
 // Demo (default): deterministic synthetic rows. Live: configured providers only;
 // an unconfigured provider contributes no rows and is reported, never faked.
 export async function GET(req: NextRequest) {
+  const auth = requireUser(req); if (auth.response) return auth.response;
   const p = req.nextUrl.searchParams;
   const source = getDataSource();
   let rows = allRows();
