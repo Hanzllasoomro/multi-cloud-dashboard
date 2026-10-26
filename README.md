@@ -4,10 +4,46 @@ Monitor billing, usage, budgets, anomalies, commitments and recommendations acro
 AWS, Azure and GCP (plus extensible providers) in one place. Next.js 14 App Router,
 TypeScript strict, hand-built SVG charts (no chart-library lock-in).
 
-> **Demo data** — this build ships with a deterministic synthetic dataset (12 months,
-> 3 providers, realistic services, credits, tax, savings-plan purchases, messy tags,
-> one restatement note). No real credentials, no network calls at runtime. Connect a
-> provider to see real billing.
+## Why this wins (the pitch)
+
+**Problem:** a company's cloud bill is split across AWS, Azure and GCP consoles
+that never agree, so nobody can answer "why did our bill go up?" in one place.
+**Ledger:** one canonical FOCUS-style model, one number across all clouds, every
+figure carrying freshness + reconciliation state, read-only least-privilege
+connections, and every number drilling down to line items. **Demo it in 3
+minutes:** open `/demo` and follow the six steps (connect → one number → March
+EC2 spike → budget breach → savings → export/reconcile). Full script: `DEMO.md`.
+
+> **Demo data by default** — this build ships with a deterministic synthetic
+> dataset (12 months, 3 providers, realistic services, credits, tax,
+> savings-plan purchases, messy tags, one restatement note). Set
+> `LEDGER_DATA_SOURCE=live` plus the provider env vars in
+> `docs/REAL_ACCOUNTS.md` to switch to real provider data; an unconfigured
+> provider shows "Not connected", never fake numbers. No credentials are ever
+> committed, logged or returned by the API. See `.env.example` (names only).
+
+## Architecture (v1.1 — demo vs live paths)
+
+```
+                         ┌─ DEMO ──────────────────────────────┐
+                         │ deterministic synthetic rows        │
+                         │ src/lib/data.ts (allRows)           │
+Providers (AWS / Azure / GCP, read-only roles)                  │
+        │  Cost Explorer / Cost Mgmt Query / BigQuery REST      ▼
+        ├─ LIVE ──► src/lib/providers/ (common interface:     Query API
+        │            validate / fetchCosts / toFocusRows)      src/lib/query.ts
+        │            └─ fixtures + mapping tests               (typed DSL, tenant
+        ▼                                                      + scope enforced,
+Connectors → Normalizer (provider schema → FOCUS + x_) ───────► meta.source =
+        ▼                                                      "demo" | "live")
+Reconciliation + publish gate → data_version N (pinned reads)
+        ▼
+Web app (src/app) · /demo judge walkthrough · CSV + JSON exports
+        · API routes (src/app/api, incl. /api/source: mode + env presence only)
+```
+
+Deploy anywhere: `vercel.json` (Vercel), `render.yaml` (Render), `Dockerfile`
+(node:20, `npm ci` → build → start) — all consistent with package.json scripts.
 
 ## Run
 
@@ -17,30 +53,6 @@ npm run dev     # http://localhost:3000
 npm run build   # production build (must pass)
 npm start
 ```
-
-## Architecture (text diagram)
-
-```
-Providers (AWS / Azure / GCP, read-only roles)
-        │  FOCUS exports / BigQuery / CUR
-        ▼
-Connectors → Raw landing zone (immutable, checksummed files)
-        ▼
-Normalizer (provider schema → FOCUS + x_ columns) → Quarantine
-        ▼
-Reconciliation + publish gate → data_version N (pinned reads)
-        ▼
-Analytics store (line items + rollups; here: in-memory synthetic store, src/lib/data.ts)
-        ▼
-Query API / semantic layer (src/lib/query.ts — typed DSL, tenant + scope enforced, cached by version)
-        ▼
-Web app (src/app) · Alerts · Reports · Public API routes (src/app/api)
-```
-
-In production the analytics store is ClickHouse (partitioned by charge month, ordered
-by tenant → billing account → charge date → provider) behind PostgreSQL (control plane,
-row-level security on `tenant_id`). This demo keeps the same seams — `data.ts` is the
-only file that changes when real ingestion lands.
 
 ## FOCUS schema (canonical row, `src/lib/types.ts`)
 

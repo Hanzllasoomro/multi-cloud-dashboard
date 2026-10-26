@@ -3,7 +3,8 @@ import { useMemo, useState } from "react";
 import { allRows } from "../../lib/data";
 import { runQuery } from "../../lib/query";
 import type { GroupKey } from "../../lib/types";
-import { escapeCsvCell, fmtMoneyFull } from "../../lib/format";
+import { fmtMoneyFull } from "../../lib/format";
+import { toCsvExport, toJsonExport } from "../../lib/exports";
 import FilterBar, { DEFAULT_FILTERS } from "../../components/FilterBar";
 import { LineChart, BarChart } from "../../components/Charts";
 import DataTable from "../../components/DataTable";
@@ -29,13 +30,12 @@ export default function Explorer() {
     groupBy: ["month"], providers: filters.provider === "All" ? undefined : [filters.provider as never],
     start: filters.start, end: filters.end, costBasis: filters.costBasis, topN: 50,
   }), [rows, filters]);
-  const exportCsv = () => {
-    const lines = [["Group", "Cost (USD)", "Usage", "Rows"].map(escapeCsvCell).join(","),
-      ...q.data.map((d) => [escapeCsvCell(d.label), String(d.cost), String(d.usage), String(d.rows)].join(",")),
-      [`TOTAL,${q.totals.cost},${q.totals.usage},${q.totals.rows}`]];
-    const blob = new Blob([lines.join("\n")], { type: "text/csv" });
-    const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "ledger-explorer-export.csv"; a.click();
+  const download = (text: string, name: string, type: string) => {
+    const blob = new Blob([text], { type });
+    const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = name; a.click();
   };
+  const exportCsv = () => download(toCsvExport(q), "ledger-explorer-export.csv", "text/csv");
+  const exportJson = () => download(toJsonExport(q), "ledger-explorer-export.json", "application/json");
   return (
     <div>
       <h1>Cost Explorer</h1>
@@ -48,6 +48,7 @@ export default function Explorer() {
         <label className="small">Granularity <select className="select" value={granularity} onChange={(e) => setGranularity(e.target.value as "month" | "day")}><option value="month">Month</option><option value="day">Day (chart uses monthly rollup for legibility)</option></select></label>
         <label className="small"><input type="checkbox" checked={compare} onChange={(e) => setCompare(e.target.checked)} /> Compare to previous period</label>
         <button className="btn" onClick={exportCsv}>Export CSV ↓</button>
+        <button className="btn" onClick={exportJson}>Export JSON ↓</button>
         <button className="btn-ghost" onClick={() => { setDrill([]); setFilters(DEFAULT_FILTERS); }}>Reset view</button>
       </div>
       {drill.length > 0 && <p className="small">Drill-down: {drill.join(" › ")} <button className="btn-ghost" onClick={() => setDrill([])}>Back to all</button></p>}

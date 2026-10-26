@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: ledger-multi-cloud
+    env: node
+    buildCommand: npm install && npm run build
+    startCommand: npm run start
+    envVars:
+      - key: LEDGER_DATA_SOURCE
+        value: demo
+      - key: NODE_ENV
+        value: production

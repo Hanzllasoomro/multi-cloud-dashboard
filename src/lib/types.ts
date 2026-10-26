@@ -60,7 +60,9 @@ export interface QueryInput {
   currency?: string;
   topN?: number;
 }
+export type DataSource = "demo" | "live";
 export interface QueryMeta {
+  source: DataSource;
   dataAsOf: string;
   freshness: Freshness;
   reconciliation: Reconciliation;

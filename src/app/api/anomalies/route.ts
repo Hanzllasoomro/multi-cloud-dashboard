@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 import { NextResponse } from "next/server";
 import { allRows } from "../../../lib/data";
 import { detectAnomalies } from "../../../lib/insights";

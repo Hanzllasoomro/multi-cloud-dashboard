@@ -26,10 +26,18 @@ export default function Overview() {
   const byAccount = runQuery(rows, { groupBy: ["subAccount"], start: "2025-11-01", end: "2026-10-26", topN: 6 }).data;
   const delta = last ? ((mtd - last) / last) * 100 : null;
   const fcSeries = months.map((m) => m.month === "2026-10" ? fc.forecast : m.cost);
+  // Unit economics (labelled): total 12-month cost / days in the demo range.
+  const total12 = months.reduce((a, m) => a + m.cost, 0);
+  const daysInRange = Math.round((new Date(2026, 9, 26).getTime() - new Date(2025, 10, 1).getTime()) / 86400000) + 1;
+  const costPerDay = total12 / daysInRange;
   return (
     <div>
       <h1>Overview</h1>
-      <p className="muted">Month-to-date spend, forecast, budget, anomalies and savings — across AWS, Azure and GCP. <FreshnessIndicator freshness="Fresh" monthState="Estimated" reconciliation="Reconciled" dataAsOf={DATA_AS_OF} /></p>
+      <p className="muted">Month-to-date spend, forecast, budget, anomalies and savings — across AWS, Azure and GCP. <FreshnessIndicator freshness="Fresh" monthState="Estimated" reconciliation="Reconciled" dataAsOf={DATA_AS_OF} /> · <a href="/demo">▶ 3-minute judge walkthrough</a></p>
+      <section className="card" style={{ marginBottom: 16 }}>
+        <h2>Cost per day — unit economics (labelled)</h2>
+        <p><strong>{fmtMoneyFull(costPerDay)} / day</strong> — {fmtMoneyFull(total12)} over {daysInRange} days (Nov 2025 – Oct 2026, all providers). Use it as cost per day, then divide by your own unit (customers, requests, orders) for cost per unit; see docs/REAL_ACCOUNTS.md for the unit-economics extension.</p>
+      </section>
       <div className="grid grid-3" style={{ marginBottom: 16 }}>
         <KpiCard label="Month-to-date spend (Oct 2026)" value={fmtMoneyFull(mtd)} deltaPct={delta} href="/explorer" spark={months.slice(-6).map((m) => m.cost)} estimated />
         <KpiCard label="Month-end forecast" value={fmtMoneyFull(fc.forecast)} kind="plain" href="/forecast" spark={months.slice(-6).map((m) => m.cost)} estimated />

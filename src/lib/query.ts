@@ -3,6 +3,12 @@ import { DATA_AS_OF, TENANT_ID } from "./types";
 
 const BASIS_FIELD = { billed: "billedCost", effective: "effectiveCost", list: "listCost" } as const;
 let queryCounter = 0;
+/** Demo by default; "live" only when the server env explicitly says so. */
+export function currentSource(): "demo" | "live" {
+  try {
+    return typeof process !== "undefined" && process.env?.LEDGER_DATA_SOURCE === "live" ? "live" : "demo";
+  } catch { return "demo"; }
+}
 
 export function costOf(r: CostRow, basis: keyof typeof BASIS_FIELD): number { return r[BASIS_FIELD[basis]]; }
 export function groupLabel(r: CostRow, k: string): string {
@@ -82,6 +88,7 @@ export function runQuery(all: CostRow[], q: QueryInput): QueryEnvelope<GroupedRo
     usage: Math.round(filtered.reduce((a, r) => a + r.usageQuantity, 0) * 100) / 100, rows: filtered.length };
   const estimated = (q.end || DATA_AS_OF).slice(0, 7) === "2026-10" || (q.start || "").slice(0, 7) === "2026-10";
   const meta: QueryMeta = {
+    source: currentSource(),
     dataAsOf: DATA_AS_OF, freshness: "Fresh", reconciliation: "Reconciled", costBasis: basis,
     currency: q.currency || "USD", estimatedMonths: estimated ? ["2026-10"] : [],
     queryId: `q_${++queryCounter}_${Date.now().toString(36)}`, cache: false,
@@ -90,5 +97,5 @@ export function runQuery(all: CostRow[], q: QueryInput): QueryEnvelope<GroupedRo
   return { data, totals, meta };
 }
 export function metaFor(freshness: QueryMeta["freshness"] = "Fresh", reconciliation: QueryMeta["reconciliation"] = "Reconciled", basis: QueryMeta["costBasis"] = "billed"): QueryMeta {
-  return { dataAsOf: DATA_AS_OF, freshness, reconciliation, costBasis: basis, currency: "USD", estimatedMonths: ["2026-10"], queryId: `q_${++queryCounter}`, cache: false };
+  return { source: currentSource(), dataAsOf: DATA_AS_OF, freshness, reconciliation, costBasis: basis, currency: "USD", estimatedMonths: ["2026-10"], queryId: `q_${++queryCounter}`, cache: false };
 }

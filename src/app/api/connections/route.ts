@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 import { NextResponse } from "next/server";
 import { CONNECTIONS } from "../../../lib/data";
 import { metaFor } from "../../../lib/query";

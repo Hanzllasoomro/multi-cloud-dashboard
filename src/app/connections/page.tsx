@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { CONNECTIONS } from "../../lib/data";
 import ConnectionCard from "../../components/ConnectionCard";
 
@@ -13,6 +13,8 @@ const SNIPPETS: Record<string, { title: string; code: string; perms: [string, st
 };
 const STEPS = ["Choose provider", "Generate IaC", "Apply in your cloud", "Test connection", "First export / backfill"];
 export default function Connections() {
+  const [live, setLive] = useState<{ source: string; providers: { provider: string; configured: boolean; missing: string[] }[] } | null>(null);
+  useEffect(() => { fetch("/api/source").then((r) => r.json()).then((j) => setLive(j.data)).catch(() => undefined); }, []);
   const [provider, setProvider] = useState<keyof typeof SNIPPETS>("AWS");
   const [step, setStep] = useState(0);
   const [checks, setChecks] = useState<Record<string, boolean>>({});
@@ -23,6 +25,15 @@ export default function Connections() {
     <div>
       <h1>Connections</h1>
       <p className="muted">Read-only connections. Every permission is shown with its reason; Test connection checks each permission individually and names the exact fix for any missing one.</p>
+      {live?.source === "live" && (
+        <section className="card" style={{ marginBottom: 16 }}>
+          <h2>Live configuration (from env presence only — values are never shown)</h2>
+          <ul>{live.providers.map((p) => (
+            <li key={p.provider}><strong>{p.provider}</strong>: {p.configured ? "Configured ✓" : <>Not connected — missing env: {p.missing.join(", ")} (no fake numbers are shown for this provider in live mode)</>}</li>
+          ))}</ul>
+          <p className="caption">Full setup: docs/REAL_ACCOUNTS.md. The demo connection cards below are the demo dataset, not live connections.</p>
+        </section>
+      )}
       <div className="grid grid-3" style={{ marginBottom: 16 }}>{CONNECTIONS.map((c) => <ConnectionCard key={c.id} c={c} />)}</div>
       <section className="card">
         <h2>Onboarding wizard</h2>
