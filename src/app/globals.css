@@ -1,0 +1,55 @@
+/* Ledger design system — tokens as CSS variables. Product code uses semantic tokens only. */
+:root{
+  /* Primitives: neutrals */
+  --n-0:#FFFFFF; --n-25:#FAFBFC; --n-50:#F5F7FA; --n-100:#EBEEF3; --n-200:#DDE2EA; --n-300:#C5CCD8;
+  --n-400:#9AA4B5; --n-500:#707B8E; --n-600:#546073; --n-700:#3F4A5C; --n-800:#2A3342; --n-900:#1A212D; --n-950:#0F141C;
+  /* Blue (brand/action) */ --blue-50:#EEF4FF; --blue-100:#DCE8FF; --blue-200:#BAD1FF; --blue-300:#8CB1FF; --blue-400:#5C8EFA; --blue-500:#3B6FEF; --blue-600:#2756D6; --blue-700:#1F44AD; --blue-800:#1D3A8A; --blue-900:#1B3269;
+  /* Green (success, cost down) */ --green-50:#ECFDF3; --green-100:#D1FADF; --green-200:#ABEFC6; --green-300:#75E0A7; --green-500:#12B76A; --green-600:#079455; --green-700:#067647; --green-800:#085D3A;
+  /* Amber (warning) */ --amber-50:#FFFAEB; --amber-100:#FEF0C7; --amber-200:#FEDF89; --amber-300:#FEC84B; --amber-500:#F79009; --amber-600:#DC6803; --amber-700:#B54708; --amber-800:#93370D;
+  /* Red (danger, cost up) */ --red-50:#FEF3F2; --red-100:#FEE4E2; --red-200:#FECDCA; --red-300:#FDA29B; --red-500:#F04438; --red-600:#D92D20; --red-700:#B42318; --red-800:#912018;
+  /* Sky (info) */ --sky-50:#F0F9FF; --sky-100:#E0F2FE; --sky-200:#BAE6FD; --sky-300:#7DD3FC; --sky-500:#0EA5E9; --sky-600:#0284C7; --sky-700:#0369A1;
+  /* Data series — Okabe-Ito (colour-blind safe) */
+  --series-1:#0072B2; --series-2:#C77700; --series-3:#009E73; --series-4:#CC79A7; --series-5:#7B5EA7; --series-6:#D55E00;
+  /* Semantic */
+  --bg-canvas:var(--n-50); --bg-surface:var(--n-0); --bg-raised:var(--n-0); --bg-sunken:var(--n-100); --bg-hover:var(--n-100); --bg-selected:var(--blue-50);
+  --text-primary:var(--n-900); --text-secondary:var(--n-700); --text-tertiary:var(--n-600); --text-disabled:var(--n-400); --text-inverse:var(--n-0); --text-link:var(--blue-700);
+  --border-default:var(--n-200); --border-strong:var(--n-300);
+  --action-primary:var(--blue-600); --action-primary-hover:var(--blue-700);
+  --status-success-text:var(--green-700); --status-success-bg:var(--green-50);
+  --status-warning-text:var(--amber-700); --status-warning-bg:var(--amber-50);
+  --status-danger-text:var(--red-700); --status-danger-bg:var(--red-50);
+  --status-info-text:var(--sky-700); --status-info-bg:var(--sky-50);
+  --radius-2:2px; --radius-4:4px; --radius-6:6px; --radius-8:8px; --radius-12:12px; --radius-full:999px;
+  --shadow-sm:0 1px 2px rgba(15,20,28,.06); --shadow-md:0 4px 16px rgba(15,20,28,.10);
+  --focus-ring:0 0 0 2px var(--blue-600);
+  --font-sans:Inter, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --space-1:4px; --space-2:8px; --space-3:12px; --space-4:16px; --space-6:24px; --space-8:32px;
+}
+[data-theme="dark"]{
+  --bg-canvas:var(--n-950); --bg-surface:var(--n-900); --bg-raised:var(--n-800); --bg-sunken:var(--n-950); --bg-hover:var(--n-800); --bg-selected:rgba(27,50,105,.4);
+  --text-primary:var(--n-50); --text-secondary:var(--n-300); --text-tertiary:var(--n-400); --text-disabled:var(--n-600); --text-inverse:var(--n-900); --text-link:var(--blue-300);
+  --border-default:var(--n-800); --border-strong:var(--n-700);
+  --status-success-bg:#0b2b1d; --status-warning-bg:#33220a; --status-danger-bg:#331614; --status-info-bg:#0b2436;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg-canvas);color:var(--text-primary);font-family:var(--font-sans);font-size:14px;line-height:1.5}
+a{color:var(--text-link)}
+button,input,select{font:inherit}
+button{cursor:pointer}
+:focus-visible{outline:none;box-shadow:var(--focus-ring)}
+.tnum{font-variant-numeric:tabular-nums}
+.card{background:var(--bg-surface);border:1px solid var(--border-default);border-radius:var(--radius-8);box-shadow:var(--shadow-sm);padding:var(--space-4)}
+.btn{background:var(--action-primary);color:#fff;border:0;border-radius:var(--radius-6);padding:8px 14px;font-weight:600}
+.btn:hover{background:var(--action-primary-hover)}
+.btn-ghost{background:var(--bg-surface);color:var(--text-primary);border:1px solid var(--border-default);border-radius:var(--radius-6);padding:8px 14px;font-weight:600}
+.input,.select{border:1px solid var(--border-default);border-radius:var(--radius-6);padding:7px 10px;background:var(--bg-surface);color:var(--text-primary)}
+.chip{display:inline-flex;gap:6px;align-items:center;background:var(--bg-selected);border:1px solid var(--border-default);border-radius:var(--radius-full);padding:2px 8px;font-size:12px}
+.chip button{border:0;background:transparent;font-weight:700}
+table{width:100%;border-collapse:collapse}
+th{ text-align:left;font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--text-tertiary);padding:8px;border-bottom:1px solid var(--border-default)}
+td{padding:8px;border-bottom:1px solid var(--border-default)}
+.num{text-align:right;font-variant-numeric:tabular-nums}
+.muted{color:var(--text-secondary)} .small{font-size:12px} .caption{font-size:12px;color:var(--text-tertiary)}
+h1{font-size:24px;margin:0 0 4px} h2{font-size:17px;margin:0 0 8px} h3{font-size:15px;margin:0 0 6px}
+.grid{display:grid;gap:16px} .grid-3{grid-template-columns:repeat(3,1fr)} .grid-4{grid-template-columns:repeat(4,1fr)} .grid-2{grid-template-columns:repeat(2,1fr)}
+@media(max-width:900px){.grid-3,.grid-4,.grid-2{grid-template-columns:1fr}}

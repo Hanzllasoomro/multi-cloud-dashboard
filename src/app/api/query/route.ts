@@ -1,0 +1,17 @@
+import { NextRequest, NextResponse } from "next/server";
+import { allRows } from "../../../lib/data";
+import { runQuery } from "../../../lib/query";
+import type { CostBasis, GroupKey, Provider } from "../../../lib/types";
+// GET /api/query?groupBy=service&provider=AWS&start=2025-11-01&end=2026-10-26&costBasis=billed&topN=10
+export async function GET(req: NextRequest) {
+  const p = req.nextUrl.searchParams;
+  const env = runQuery(allRows(), {
+    groupBy: (p.get("groupBy")?.split(",") as GroupKey[]) || ["provider"],
+    providers: p.get("provider") ? [p.get("provider") as Provider] : undefined,
+    services: p.get("service") ? [p.get("service")!] : undefined,
+    start: p.get("start") || "2025-11-01", end: p.get("end") || "2026-10-26",
+    costBasis: (p.get("costBasis") as CostBasis) || "billed",
+    topN: Number(p.get("topN") || 10),
+  });
+  return NextResponse.json(env);
+}
