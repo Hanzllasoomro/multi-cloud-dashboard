@@ -88,3 +88,25 @@ role) over long-lived keys.
 | Live query returns 0 rows | No provider configured, or range before export start | Check `/api/source`; widen/narrow the range |
 | Totals differ from console | Credits/tax/timing, or Cost Explorer vs invoice basis | See README reconciliation tolerances; Billed basis ties to invoice |
 | A secret appears in logs | Bug — report it | Connectors never log credentials; grep logs and rotate the credential |
+
+## Account lifecycle (Settings › Connected accounts)
+
+Accounts are managed in Settings, not in the wizard: the Connections page
+onboards (IaC + permission reasons); Settings adds, edits, pauses, tests and
+removes accounts day to day.
+
+| From | Action | To | What happens |
+|---|---|---|---|
+| — | Add account (provider, display name, identifier, billing account, scope) | Pending | No credentials are asked for or stored — live credentials stay in server env vars only. |
+| Pending | Test connection | Validating → Healthy / Degraded / Broken | Per-permission checklist; every failure names its fix. Demo mode: simulated checklist, labelled as such. Live mode: env-presence check (variable names only). |
+| Healthy / Degraded | Pause | Paused | Rows for that account's scope are excluded from `/api/query` totals; the header and Overview banner name the paused account. |
+| Paused | Resume | Previous status (e.g. Degraded) | Pre-pause status is restored, not silently flipped to Healthy. |
+| Any | Edit | Same status | Display name and scope (sub-accounts, tags, teams) only; provider and identifier cannot change. |
+| Any | Remove (typed confirmation) | Gone | You must type the display name exactly. Choose **keep** (historical data stays, no new ingestion) or **purge** (a purge job deletes the account's rows in production; in this version demo rows are a shared synthetic dataset, so purge is recorded in the audit log but does not delete other accounts' demo rows). |
+| — | Broken | Fix + re-test | Revoking a role flips a connection to Broken within one health-check interval and raises an alert; re-test after re-applying the permission. |
+
+Every add, edit, pause, resume, test and remove writes an append-only audit
+entry (who, when, what) shown in Settings › Audit log and at
+`GET /api/accounts/audit`. The account store itself is in-memory in this
+version and resets on server restart — a database replaces that one module
+later; the API shapes and audit format do not change.

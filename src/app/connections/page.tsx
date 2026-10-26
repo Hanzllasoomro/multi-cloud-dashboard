@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { CONNECTIONS } from "../../lib/data";
 import ConnectionCard from "../../components/ConnectionCard";
 
@@ -24,7 +25,7 @@ export default function Connections() {
   return (
     <div>
       <h1>Connections</h1>
-      <p className="muted">Read-only connections. Every permission is shown with its reason; Test connection checks each permission individually and names the exact fix for any missing one.</p>
+      <p className="muted">Read-only connections. Every permission is shown with its reason; Test connection checks each permission individually and names the exact fix for any missing one. To add, edit, pause, test or remove accounts day to day, go to <Link href="/settings">Settings › Connected accounts</Link> — this page is the onboarding wizard (IaC + permission reasons).</p>
       {live?.source === "live" && (
         <section className="card" style={{ marginBottom: 16 }}>
           <h2>Live configuration (from env presence only — values are never shown)</h2>

@@ -14,8 +14,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const path = usePathname();
   const [theme, setTheme] = useState<"light" | "dark">("light");
   const [source, setSource] = useState<SourceState | null>(null);
+  const [accounts, setAccounts] = useState<{ id: string; displayName: string; status: string }[] | null>(null);
   useEffect(() => {
     fetch("/api/source").then((r) => r.json()).then((j) => setSource(j.data)).catch(() => undefined);
+    fetch("/api/accounts").then((r) => r.json()).then((j) => setAccounts(j.data)).catch(() => undefined);
   }, []);
   const live = source?.source === "live";
   const notConnected = (source?.providers || []).filter((p) => !p.configured).map((p) => p.provider);
@@ -47,6 +49,17 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               <><strong>Demo data</strong> — connect a provider to see real billing. Synthetic data only; no real credentials, no network calls at runtime. Set LEDGER_DATA_SOURCE=live with provider env vars to switch to live data (see docs/REAL_ACCOUNTS.md). Judge walkthrough: <Link href="/demo">/demo</Link>.</>
             )}
           </div>
+          {accounts && (() => {
+            const active = accounts.filter((a) => a.status !== "Paused").length;
+            const flagged = accounts.filter((a) => a.status === "Paused" || a.status === "Broken");
+            return (
+              <div style={{ background: flagged.length ? "var(--status-warning-bg)" : "var(--bg-sunken)", border: "1px solid var(--border-default)", borderRadius: "var(--radius-8)", padding: "10px 14px", marginBottom: 16 }}>
+                <span className="small">Connected accounts: <strong>{accounts.length}</strong> · Active: <strong>{active}</strong></span>
+                {flagged.length > 0 && <span className="small"> · ⚠ Paused / broken: {flagged.map((a) => a.displayName).join(", ")} — paused accounts are excluded from /api/query totals. Manage them in <Link href="/settings">Settings › Connected accounts</Link>.</span>}
+                {flagged.length === 0 && <span className="small"> · Manage them in <Link href="/settings">Settings › Connected accounts</Link>.</span>}
+              </div>
+            );
+          })()}
           {children}
         </main>
       </div>

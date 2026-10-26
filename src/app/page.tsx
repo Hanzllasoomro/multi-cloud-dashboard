@@ -1,5 +1,6 @@
 "use client";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { allRows, CONNECTIONS, monthCost, monthlyTotals, RECOMMENDATIONS } from "../lib/data";
 import { runQuery } from "../lib/query";
 import { currentMonthForecast, detectAnomalies, evaluateBudgets } from "../lib/insights";
@@ -27,6 +28,9 @@ export default function Overview() {
   const delta = last ? ((mtd - last) / last) * 100 : null;
   const fcSeries = months.map((m) => m.month === "2026-10" ? fc.forecast : m.cost);
   // Unit economics (labelled): total 12-month cost / days in the demo range.
+  const [accounts, setAccounts] = useState<{ displayName: string; status: string }[] | null>(null);
+  useEffect(() => { fetch("/api/accounts").then((r) => r.json()).then((j) => setAccounts(j.data)).catch(() => undefined); }, []);
+  const flagged = (accounts || []).filter((a) => a.status === "Paused" || a.status === "Broken");
   const total12 = months.reduce((a, m) => a + m.cost, 0);
   const daysInRange = Math.round((new Date(2026, 9, 26).getTime() - new Date(2025, 10, 1).getTime()) / 86400000) + 1;
   const costPerDay = total12 / daysInRange;
@@ -34,6 +38,14 @@ export default function Overview() {
     <div>
       <h1>Overview</h1>
       <p className="muted">Month-to-date spend, forecast, budget, anomalies and savings — across AWS, Azure and GCP. <FreshnessIndicator freshness="Fresh" monthState="Estimated" reconciliation="Reconciled" dataAsOf={DATA_AS_OF} /> · <a href="/demo">▶ 3-minute judge walkthrough</a></p>
+      {accounts && (
+        <section className="card" style={{ marginBottom: 16 }}>
+          <h2>Connected accounts</h2>
+          <p><strong>{accounts.length}</strong> connected · <strong>{accounts.filter((a) => a.status !== "Paused").length}</strong> active
+            {flagged.length > 0 && <> · ⚠ Paused / broken: {flagged.map((a) => a.displayName).join(", ")} — paused accounts are excluded from API query totals.</>}
+            {" "}Manage them in <Link href="/settings">Settings › Connected accounts</Link>.</p>
+        </section>
+      )}
       <section className="card" style={{ marginBottom: 16 }}>
         <h2>Cost per day — unit economics (labelled)</h2>
         <p><strong>{fmtMoneyFull(costPerDay)} / day</strong> — {fmtMoneyFull(total12)} over {daysInRange} days (Nov 2025 – Oct 2026, all providers). Use it as cost per day, then divide by your own unit (customers, requests, orders) for cost per unit; see docs/REAL_ACCOUNTS.md for the unit-economics extension.</p>

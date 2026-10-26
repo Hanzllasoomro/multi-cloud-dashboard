@@ -116,13 +116,33 @@ tenant/scope filters are applied.
 - Spreadsheet formula injection neutralised in exports (`src/lib/format.ts`).
 - Tags/resource names are untrusted text: escaped everywhere, never obeyed.
 
+## Settings — connected accounts (v1.2)
+
+`Settings › Connected accounts` is where accounts are managed day to day
+(the Connections page is the onboarding wizard). Add an account (provider,
+display name, identifier, billing account, scope: sub-accounts/tags/teams),
+edit its name and scope, pause/resume it, run a per-permission test
+connection, or remove it with typed confirmation (type the display name
+exactly) plus a keep-data vs purge-data choice. Paused accounts are excluded
+from `/api/query` totals; the header and Overview banner name any
+paused/broken account. Every action writes an append-only audit entry.
+No secret fields exist anywhere in this flow — live credentials stay in
+server environment variables only (see docs/REAL_ACCOUNTS.md). Account
+lifecycle: see the "Account lifecycle" section in docs/REAL_ACCOUNTS.md.
+Limitation: the account store is in-memory in this version and resets on
+server restart; a database replaces that one module later.
+
 ## Routes
 
 Pages: `/` overview, `/explorer`, `/connections`, `/budgets`, `/anomalies`,
 `/forecast`, `/commitments`, `/recommendations`, `/allocation`, `/reports`,
 `/data-health`, `/settings`.
-APIs: `/api/query`, `/api/connections`, `/api/budgets`, `/api/anomalies`,
-`/api/forecast`, `/api/recommendations`, `/api/commitments`, `/api/data-health`.
+APIs: `/api/query` (accepts `?accountId=` managed ids and `?accounts=`
+sub-account names; paused accounts excluded), `/api/accounts`,
+`/api/accounts/[id]`, `/api/accounts/[id]/test`, `/api/accounts/audit`,
+`/api/connections`, `/api/budgets`, `/api/anomalies`,
+`/api/forecast`, `/api/recommendations`, `/api/commitments`, `/api/data-health`,
+`/api/source`.
 
 ## Licence
 
