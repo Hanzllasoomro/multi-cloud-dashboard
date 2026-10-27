@@ -1,4 +1,4 @@
-# Ledger — Security (v1.3)
+# Ledger — Security (v1.3.1)
 
 ## Threat model
 
@@ -31,11 +31,37 @@
   password. See `src/components/ui/README.md` for why this is not a literal
   shadcn CLI install (no Tailwind migration).
 
+## v1.3.1 fix: why registering used to sign you out (and login then failed)
+
+v1.3.0 kept users and sessions in module-level memory only. That worked
+under `npm start` (one shared server bundle), but under `npm run dev`
+each route handler can hold its own copy of that memory, and a recompile
+or a second server process (e.g. an old server still on port 3000 while
+the new one moved to 3001) resets it. Symptom, reproduced in dev before
+the fix: register → 201, then `/api/auth/me` → 401, then login with the
+just-created password → 401 every time (fast 401s are consistent with
+"no such user", not with a slow scrypt mismatch).
+
+Fix: users and sessions are now persisted to `.ledger-data/auth.json`
+(default; `LEDGER_AUTH_FILE` overrides it), loaded before every lookup
+and saved atomically (tmp file + rename) after every mutation, so every
+server instance sharing the file sees the same accounts. Only scrypt
+hashes and session tokens are stored — never plaintext passwords. The
+file is git-ignored and should be owner-only readable (`chmod 600` on
+macOS/Linux). `/api/auth/status` exposes only `{hasUsers, demoAuthEnabled}`
+so a wiped store is visible on `/login` instead of masquerading as a
+wrong password; login failures still return the generic message. If you
+are on v1.3.0 and see this: kill any stale server (Windows:
+`netstat -ano | findstr :3000` then `taskkill /PID <pid> /F`;
+macOS/Linux: `lsof -ti:3000 | xargs kill`), pull v1.3.1, restart, and
+register once more.
+
 ## What is still production-only work (NOT faked)
 
-- **Real database** for users, sessions, and accounts. All three stores are
-  in-memory in this version and reset on server restart. A DB replaces one
-  module each; API shapes do not change.
+- **Real database** for users and sessions (now file-backed for local
+  dev/single-server use — see above) and for accounts (still in-memory
+  and reset on server restart). A DB replaces one module each; API shapes
+  do not change.
 - **MFA (TOTP/WebAuthn)** — not implemented. Do not claim it.
 - **Email password reset** — not implemented. There is deliberately no
   half-working reset flow: until email reset exists, password reset is via

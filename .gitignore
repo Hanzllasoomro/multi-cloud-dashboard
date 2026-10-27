@@ -1,7 +1,12 @@
 node_modules/
 .next/
+tsconfig.tsbuildinfo
 out/
 *.log
 .DS_Store
 .env.local
 .env*.local
+# Ledger auth store (v1.3.1): users (scrypt hashes only) + session tokens.
+# Local dev/single-server only — never commit it, never share it, and a
+# real database replaces it for production (see docs/SECURITY.md).
+.ledger-data/

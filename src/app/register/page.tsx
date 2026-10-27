@@ -26,6 +26,16 @@ export default function Register() {
       const r = await fetch("/api/auth/register", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name, email, password }) });
       const j = await r.json().catch(() => ({}));
       if (!r.ok) { setErr(j.error || "Registration failed."); return; }
+      // Never land on a page that immediately bounces to /login with no
+      // explanation (the v1.3.0 bug: the account existed in one server
+      // instance but the session was lost before the next request).
+      // Verify the session first; if it is not there, send the user to
+      // /login with an honest message instead of a silent sign-out.
+      const me = await fetch("/api/auth/me").catch(() => null);
+      if (!me || !me.ok) {
+        router.push("/login?session_lost=1");
+        return;
+      }
       router.push("/"); router.refresh();
     } finally { setLoading(false); }
   }

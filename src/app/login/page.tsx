@@ -1,5 +1,5 @@
 "use client";
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "../../components/ui/button";
@@ -14,12 +14,23 @@ function Login() {
   const router = useRouter();
   const search = useSearchParams();
   const next = search.get("next") || "/";
+  const sessionLost = search.get("session_lost") === "1";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [show, setShow] = useState(false);
   const [err, setErr] = useState("");
   const [loading, setLoading] = useState(false);
   const [demoLoading, setDemoLoading] = useState(false);
+  const [hasUsers, setHasUsers] = useState<boolean | null>(null);
+  // If the server's account store is empty (e.g. it was wiped by a
+  // restart on an old version), say so plainly: a 401 then means "no
+  // account exists", not "wrong password". The status endpoint reveals
+  // only a boolean, never emails or counts.
+  useEffect(() => {
+    fetch("/api/auth/status").then((r) => r.json()).then((j) => {
+      if (typeof j?.data?.hasUsers === "boolean") setHasUsers(j.data.hasUsers);
+    }).catch(() => undefined);
+  }, []);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault(); setErr(""); setLoading(true);
@@ -47,6 +58,16 @@ function Login() {
           <CardDescription>Monitor billing, usage, budgets and recommendations across AWS, Azure and GCP in one place.</CardDescription>
         </CardHeader>
         <CardContent>
+          {sessionLost && (
+            <div style={{ marginBottom: 12 }}>
+              <Alert>Account created, but your session wasn&apos;t saved — please sign in with the email and password you just created.</Alert>
+            </div>
+          )}
+          {hasUsers === false && (
+            <div style={{ marginBottom: 12 }}>
+              <Alert>No accounts exist on this server yet — create the first one (it becomes the Owner).</Alert>
+            </div>
+          )}
           {err && <div style={{ marginBottom: 12 }}><Alert variant="destructive">{err}</Alert></div>}
           <form onSubmit={submit}>
             <FormField id="email" label="Email" type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} />

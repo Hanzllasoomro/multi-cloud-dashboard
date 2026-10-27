@@ -161,8 +161,35 @@ Tailwind migration; see `src/components/ui/README.md`).
   never Owner. Keep it **off** for real deployments.
 - **Not yet built (documented, not faked):** MFA/TOTP, email password
   reset (reset is via an admin until then), SSO/SCIM, and a real database
-  — users, sessions, and accounts are in-memory in this version and reset
-  on server restart. Full threat model: `docs/SECURITY.md`.
+  — the account store is still in-memory and resets on server restart.
+  Full threat model: `docs/SECURITY.md`.
+- **Auth persistence (v1.3.1 fix):** users and sessions are now saved to
+  `.ledger-data/auth.json` in the project root (override with
+  `LEDGER_AUTH_FILE`), loaded before every lookup and saved atomically
+  (tmp file + rename) after every change, so accounts survive dev-server
+  restarts, recompiles, and a second server process. Only scrypt hashes
+  and session tokens are stored — never plaintext passwords. The file is
+  git-ignored; on a shared machine set its permissions to owner-only
+  (`chmod 600 .ledger-data/auth.json` on macOS/Linux — on Windows the
+  file lives in your user profile, so don't copy it elsewhere). A real
+  database still replaces this module for production.
+
+### Troubleshooting: signed out right after registering?
+
+This was a real v1.3.0 bug, fixed in v1.3.1: the old in-memory store did
+not survive a dev-server recompile or a second server process, so the
+just-created account vanished and every login returned 401. If you still
+see it on an older checkout: (1) make sure only one server is running —
+the log line "Port 3000 is in use, trying 3001 instead" means an old
+server is still alive and holding the old, empty store; (2) kill the
+stale server — Windows PowerShell:
+`netstat -ano | findstr :3000` then `taskkill /PID <pid> /F`, or
+macOS/Linux: `lsof -ti:3000 | xargs kill`; (3) pull v1.3.1, restart once,
+and register once more — the account is then saved to
+`.ledger-data/auth.json` and survives restarts. If you ever get a
+401 that looks like a wrong password, open `/login`: it now tells you
+plainly when no accounts exist on the server at all (via
+`/api/auth/status`, which reveals only that boolean — never emails).
 
 ## Routes
 
@@ -175,7 +202,7 @@ sub-account names; paused accounts excluded), `/api/accounts`,
 `/api/connections`, `/api/budgets`, `/api/anomalies`,
 `/api/forecast`, `/api/recommendations`, `/api/commitments`, `/api/data-health`,
 `/api/source`, `/api/auth/register`, `/api/auth/login`, `/api/auth/logout`,
-`/api/auth/me`, `/api/auth/demo`, `/api/users`, `/api/users/[id]`.
+`/api/auth/me`, `/api/auth/demo`, `/api/auth/status`, `/api/users`, `/api/users/[id]`.
 
 ## Licence
 
