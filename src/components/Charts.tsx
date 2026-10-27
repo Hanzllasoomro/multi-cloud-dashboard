@@ -28,7 +28,7 @@ export function BarChart({ data, stacked, horizontal }: { data: { label: string;
     return <div style={{ display: "grid", gap: 8 }}>{data.map((d) => (
       <div key={d.label} style={{ display: "grid", gridTemplateColumns: "160px 1fr 90px", gap: 8, alignItems: "center" }}>
         <span className="small">{d.label}</span>
-        <div style={{ display: "flex", height: 18 }}>{d.values.map((v, i) => <div key={i} style={{ width: `${(v / max) * 100}%`, background: SERIES[i % SERIES.length] }} title={String(v)} />)}</div>
+        <div className="hatched" style={{ display: "flex", height: 20, borderRadius: "var(--radius-full)", overflow: "hidden" }}>{d.values.map((v, i) => <div key={i} style={{ width: `${(v / max) * 100}%`, background: SERIES[i % SERIES.length] }} title={String(v)} />)}</div>
         <span className="small num">${Math.round(d.values.reduce((a, b) => a + b, 0)).toLocaleString()}</span>
       </div>))}</div>;
   }
@@ -40,7 +40,7 @@ export function BarChart({ data, stacked, horizontal }: { data: { label: string;
         const bw = Math.max(((W - 20) / data.length) * 0.6, 6);
         let y = H - 20;
         return d.values.map((v, j) => {
-          const h = (v / max) * (H - 40); const rect = <rect key={j} x={x} y={y - h} width={bw} height={h} fill={SERIES[j % SERIES.length]}><title>{d.label}: ${Math.round(v).toLocaleString()}</title></rect>;
+          const h = (v / max) * (H - 40); const rect = <rect key={j} x={x} y={y - h} width={bw} height={h} rx={8} fill={SERIES[j % SERIES.length]}><title>{d.label}: ${Math.round(v).toLocaleString()}</title></rect>;
           y -= h; return rect;
         });
       })}

@@ -15,7 +15,7 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
 }
 
 export function Button({ variant = "default", size = "default", loading = false, disabled, style, children, ...props }: ButtonProps) {
-  const base: React.CSSProperties = { borderRadius: "var(--radius-6)", fontWeight: 600, cursor: disabled || loading ? "not-allowed" : "pointer", opacity: disabled || loading ? 0.6 : 1, ...sizeStyle[size] };
+  const base: React.CSSProperties = { borderRadius: "var(--radius-full)", fontWeight: 600, cursor: disabled || loading ? "not-allowed" : "pointer", opacity: disabled || loading ? 0.6 : 1, ...sizeStyle[size] };
   const byVariant: Record<Variant, React.CSSProperties> = {
     default: { background: "var(--action-primary)", color: "#fff", border: "0" },
     secondary: { background: "var(--bg-sunken)", color: "var(--text-primary)", border: "1px solid var(--border-default)" },

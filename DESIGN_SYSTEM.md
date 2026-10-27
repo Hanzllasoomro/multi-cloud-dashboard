@@ -1,5 +1,7 @@
 # Design System — Ledger
 
+> **v1.4 UI refresh (2026-10-27):** inspired by the Dribbble "Task Management Dashboard" shot the user linked — pale warm-gray canvas, one white rounded (24px) frame, grouped sidebar (Menu / General) with a green active indicator, pill buttons, 20px cards, capsule chart bars with a hatched "remaining" track, a deep-forest hero stat card, and a dark cost-per-day card. Adapted, not copied: no Donezo branding, names, or sample tasks; Ledger data, routes, and cost-up-red / cost-down-green rules are unchanged. Primary action colour moved from Ledger blue #2756D6 to deep forest green #175E3B; Okabe-Ito chart series are unchanged.
+
 Working name: **Ledger**. Numbers first; trust visible; calm density; one way to do
 one thing; never colour alone; provider-neutral; explain, don't just show;
 accessible by construction. Implemented in `src/app/globals.css` as CSS variables;

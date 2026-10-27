@@ -10,8 +10,6 @@ import { LineChart, DonutChart, BarChart } from "../components/Charts";
 import DataTable from "../components/DataTable";
 import AnomalyCard from "../components/AnomalyCard";
 import BudgetMeter from "../components/BudgetMeter";
-import FreshnessIndicator from "../components/FreshnessIndicator";
-import { DATA_AS_OF } from "../lib/types";
 
 export default function Overview() {
   const rows = useMemo(() => allRows(), []);
@@ -36,8 +34,16 @@ export default function Overview() {
   const costPerDay = total12 / daysInRange;
   return (
     <div>
-      <h1>Overview</h1>
-      <p className="muted">Month-to-date spend, forecast, budget, anomalies and savings — across AWS, Azure and GCP. <FreshnessIndicator freshness="Fresh" monthState="Estimated" reconciliation="Reconciled" dataAsOf={DATA_AS_OF} /> · <a href="/demo">▶ 3-minute judge walkthrough</a></p>
+      <div className="page-head">
+        <div>
+          <h1>Overview</h1>
+          <p className="muted" style={{ margin: 0 }}>Spend, forecast, budgets and savings — across AWS, Azure and GCP.</p>
+        </div>
+        <div className="page-actions">
+          <Link href="/explorer" className="btn">+ Explore costs</Link>
+          <Link href="/demo" className="btn-ghost">Judge walkthrough</Link>
+        </div>
+      </div>
       {accounts && (
         <section className="card" style={{ marginBottom: 16 }}>
           <h2>Connected accounts</h2>
@@ -46,18 +52,17 @@ export default function Overview() {
             {" "}Manage them in <Link href="/settings">Settings › Connected accounts</Link>.</p>
         </section>
       )}
-      <section className="card" style={{ marginBottom: 16 }}>
-        <h2>Cost per day — unit economics (labelled)</h2>
-        <p><strong>{fmtMoneyFull(costPerDay)} / day</strong> — {fmtMoneyFull(total12)} over {daysInRange} days (Nov 2025 – Oct 2026, all providers). Use it as cost per day, then divide by your own unit (customers, requests, orders) for cost per unit; see docs/REAL_ACCOUNTS.md for the unit-economics extension.</p>
-      </section>
-      <div className="grid grid-3" style={{ marginBottom: 16 }}>
-        <KpiCard label="Month-to-date spend (Oct 2026)" value={fmtMoneyFull(mtd)} deltaPct={delta} href="/explorer" spark={months.slice(-6).map((m) => m.cost)} estimated />
-        <KpiCard label="Month-end forecast" value={fmtMoneyFull(fc.forecast)} kind="plain" href="/forecast" spark={months.slice(-6).map((m) => m.cost)} estimated />
-        <KpiCard label="vs last month (Sep 2026)" value={fmtMoneyFull(last)} deltaPct={delta} href="/explorer" />
-        <KpiCard label="vs budget (total)" value={`${fmtMoneyCompact(budgets[0].forecast)} / ${fmtMoneyCompact(budgets[0].amount)}`} kind="plain" href="/budgets" />
-        <KpiCard label="Open anomalies" value={String(anomalies.length)} kind="plain" href="/anomalies" />
-        <KpiCard label="Potential savings / month" value={fmtMoneyCompact(savings)} kind="plain" href="/recommendations" />
+      <div className="grid grid-4" style={{ marginBottom: 16 }}>
+        <KpiCard tone="hero" label="Month-to-date spend (Oct 2026)" value={fmtMoneyFull(mtd)} deltaPct={delta} href="/explorer" spark={months.slice(-6).map((m) => m.cost)} estimated />
+        <KpiCard label="Month-end forecast" value={fmtMoneyFull(fc.forecast)} kind="plain" href="/forecast" spark={months.slice(-6).map((m) => m.cost)} estimated caption="Estimated month-end" />
+        <KpiCard label="Potential savings / month" value={fmtMoneyCompact(savings)} kind="plain" href="/recommendations" caption="Open recommendations" />
+        <KpiCard label="Open anomalies" value={String(anomalies.length)} kind="plain" href="/anomalies" caption="Needs review" />
       </div>
+      <section className="dark-card" style={{ marginBottom: 16 }}>
+        <h2 style={{ color: "#fff" }}>Cost per day — unit economics (labelled)</h2>
+        <p style={{ fontSize: 22, fontWeight: 800, color: "#fff", margin: "6px 0" }} className="tnum">{fmtMoneyFull(costPerDay)} / day</p>
+        <p>{fmtMoneyFull(total12)} over {daysInRange} days (Nov 2025 – Oct 2026, all providers). Use it as cost per day, then divide by your own unit (customers, requests, orders) for cost per unit; see docs/REAL_ACCOUNTS.md for the unit-economics extension. Budget vs forecast for the total is in <Link href="/budgets">Budget status</Link> below.</p>
+      </section>
       <div className="grid grid-2" style={{ marginBottom: 16 }}>
         <section className="card"><h2>Trend + forecast band</h2>
           <LineChart series={[{ label: "Monthly spend", values: months.map((m) => m.cost) }, { label: "Forecast", values: fcSeries }]} labels={months.map((m) => fmtMonth(m.month))} band={{ low: months.map((m) => m.month === "2026-10" ? fc.low : m.cost * 0.97), high: months.map((m) => m.month === "2026-10" ? fc.high : m.cost * 1.03) }} />

@@ -4,10 +4,15 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import FreshnessIndicator from "./FreshnessIndicator";
 import { DATA_AS_OF } from "../lib/types";
-const NAV = [
-  ["Overview", "/"], ["Demo walkthrough", "/demo"], ["Cost Explorer", "/explorer"], ["Connections", "/connections"], ["Budgets", "/budgets"],
-  ["Anomalies", "/anomalies"], ["Forecast", "/forecast"], ["Commitments", "/commitments"], ["Recommendations", "/recommendations"],
-  ["Allocation", "/allocation"], ["Reports", "/reports"], ["Data Health", "/data-health"], ["Settings", "/settings"],
+const NAV_GROUPS = [
+  { label: "Menu", items: [
+    ["Overview", "/"], ["Cost Explorer", "/explorer"], ["Budgets", "/budgets"],
+    ["Anomalies", "/anomalies"], ["Forecast", "/forecast"], ["Commitments", "/commitments"], ["Recommendations", "/recommendations"],
+    ["Allocation", "/allocation"], ["Reports", "/reports"], ["Data Health", "/data-health"],
+  ] },
+  { label: "General", items: [
+    ["Connections", "/connections"], ["Demo walkthrough", "/demo"], ["Settings", "/settings"],
+  ] },
 ];
 interface SourceState { source: "demo" | "live"; providers: { provider: string; configured: boolean; missing: string[] }[] }
 export default function AppShell({ children }: { children: React.ReactNode }) {
@@ -16,6 +21,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const [source, setSource] = useState<SourceState | null>(null);
   const [accounts, setAccounts] = useState<{ id: string; displayName: string; status: string }[] | null>(null);
   const [me, setMe] = useState<{ name: string; email: string; role: string } | null>(null);
+  const [search, setSearch] = useState("");
   const router = useRouter();
   const isAuthPage = path === "/login" || path === "/register";
   useEffect(() => {
@@ -36,63 +42,85 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const notConnected = (source?.providers || []).filter((p) => !p.configured).map((p) => p.provider);
   useEffect(() => { document.documentElement.setAttribute("data-theme", theme); }, [theme]);
   const crumb = path === "/" ? "Overview" : path.slice(1).split("-").map((s) => s[0].toUpperCase() + s.slice(1)).join(" ");
-  // Auth pages get a bare shell: no nav, no banners, no data fetches above.
+  const initials = me ? me.name.split(" ").filter(Boolean).slice(0, 2).map((s) => s[0].toUpperCase()).join("") : "L";
   if (isAuthPage) {
     return (
-      <div>
-        <header style={{ height: 56, display: "flex", alignItems: "center", padding: "0 16px", background: "var(--bg-surface)", borderBottom: "1px solid var(--border-default)" }}>
-          <Link href="/" style={{ textDecoration: "none", color: "var(--text-primary)", fontWeight: 800, fontSize: 18 }}>▦ Ledger</Link>
-        </header>
-        <main style={{ padding: 24 }}>{children}</main>
+      <div className="shell-canvas">
+        <div className="shell-frame" style={{ display: "block" }}>
+          <header style={{ height: 56, display: "flex", alignItems: "center", padding: "0 20px", borderBottom: "1px solid var(--border-default)" }}>
+            <Link href="/" className="sidebar-logo" style={{ margin: 0 }}><span className="logo-mark">✓</span> Ledger</Link>
+          </header>
+          <main style={{ padding: 24 }}>{children}</main>
+        </div>
       </div>
     );
   }
   return (
-    <div>
-      <header style={{ height: 56, display: "flex", alignItems: "center", gap: 16, padding: "0 16px", background: "var(--bg-surface)", borderBottom: "1px solid var(--border-default)", position: "sticky", top: 0, zIndex: 10 }}>
-        <Link href="/" style={{ textDecoration: "none", color: "var(--text-primary)", fontWeight: 800, fontSize: 18 }}>▦ Ledger</Link>
-        <label className="small">Organisation <select className="select" defaultValue="Acme Corp"><option>Acme Corp</option><option>Acme Corp › Platform team (child org)</option></select></label>
-        <div style={{ flex: 1 }} />
-        <FreshnessIndicator freshness="Fresh" monthState="Estimated" reconciliation="Reconciled" dataAsOf={DATA_AS_OF} />
-        <button className="btn-ghost" onClick={() => setTheme(theme === "light" ? "dark" : "light")} aria-label="Toggle dark theme">{theme === "light" ? "☾ Dark" : "☀ Light"}</button>
-        {me ? (
-          <span className="small">
-            {me.name} ({me.role}){" "}
-            <button className="btn-ghost" onClick={logout} style={{ padding: "4px 10px" }}>Log out</button>
-          </span>
-        ) : (
-          <Link href="/login" className="small">Sign in</Link>
-        )}
-      </header>
-      <div style={{ display: "flex" }}>
-        <nav aria-label="Main" style={{ width: 240, flexShrink: 0, padding: 16, borderRight: "1px solid var(--border-default)", minHeight: "calc(100vh - 56px)" }}>
-          {NAV.map(([label, href]) => (
-            <Link key={href} href={href} style={{ display: "block", padding: "8px 10px", borderRadius: "var(--radius-6)", background: path === href ? "var(--bg-selected)" : "transparent", color: "var(--text-primary)", textDecoration: "none", fontWeight: path === href ? 700 : 400 }}>{label}</Link>
+    <div className="shell-canvas">
+      <div className="shell-frame">
+        <aside className="sidebar" aria-label="Main">
+          <Link href="/" className="sidebar-logo"><span className="logo-mark">✓</span> Ledger</Link>
+          {NAV_GROUPS.map((group) => (
+            <div key={group.label}>
+              <div className="nav-group-label">{group.label}</div>
+              {group.items.map(([label, href]) => (
+                <Link key={href} href={href} className={`nav-item${path === href ? " active" : ""}`}>{label}</Link>
+              ))}
+            </div>
           ))}
-          <p className="caption" style={{ marginTop: 24 }}>Read-only by default. Least-privilege roles; federation over static keys. No secrets in code.</p>
-        </nav>
-        <main style={{ flex: 1, padding: 24, maxWidth: 1240 }}>
-          <p className="caption" aria-label="Breadcrumb">Ledger / {crumb}</p>
-          <div style={{ background: live ? "var(--status-success-bg, #ECFDF3)" : "var(--status-warning-bg)", border: "1px solid var(--amber-200)", borderRadius: "var(--radius-8)", padding: "10px 14px", marginBottom: 16 }}>
-            {live ? (
-              <><strong>Live provider data</strong> — LEDGER_DATA_SOURCE=live. Configured: {(source?.providers || []).filter((p) => p.configured).map((p) => p.provider).join(", ") || "none"}. {notConnected.length > 0 && <>Not connected (no fake numbers for these): {notConnected.join(", ")}.</>} See <Link href="/connections">Connections</Link> and <Link href="/demo">Demo walkthrough</Link>.</>
-            ) : (
-              <><strong>Demo data</strong> — connect a provider to see real billing. Synthetic data only; no real credentials, no network calls at runtime. Set LEDGER_DATA_SOURCE=live with provider env vars to switch to live data (see docs/REAL_ACCOUNTS.md). Judge walkthrough: <Link href="/demo">/demo</Link>.</>
-            )}
+          <div className="sidebar-dark-card">
+            <strong>{live ? "Live provider data" : "Still on demo data?"}</strong>
+            <p className="small">{live ? "Live mode is on. Check which providers are connected." : "Connect a provider to replace synthetic demo figures with real billing."}</p>
+            <Link href="/connections" className="btn-light" style={{ padding: "8px 14px", fontSize: 13 }}>Manage connections →</Link>
           </div>
-          {accounts && (() => {
-            const active = accounts.filter((a) => a.status !== "Paused").length;
-            const flagged = accounts.filter((a) => a.status === "Paused" || a.status === "Broken");
-            return (
-              <div style={{ background: flagged.length ? "var(--status-warning-bg)" : "var(--bg-sunken)", border: "1px solid var(--border-default)", borderRadius: "var(--radius-8)", padding: "10px 14px", marginBottom: 16 }}>
-                <span className="small">Connected accounts: <strong>{accounts.length}</strong> · Active: <strong>{active}</strong></span>
-                {flagged.length > 0 && <span className="small"> · ⚠ Paused / broken: {flagged.map((a) => a.displayName).join(", ")} — paused accounts are excluded from /api/query totals. Manage them in <Link href="/settings">Settings › Connected accounts</Link>.</span>}
-                {flagged.length === 0 && <span className="small"> · Manage them in <Link href="/settings">Settings › Connected accounts</Link>.</span>}
-              </div>
-            );
-          })()}
-          {children}
-        </main>
+          <p className="caption" style={{ marginTop: 16 }}>Read-only by default. Least-privilege roles; federation over static keys. No secrets in code.</p>
+        </aside>
+        <div className="shell-main">
+          <header className="topbar">
+            <form className="search-pill" role="search" onSubmit={(e) => { e.preventDefault(); router.push("/explorer"); }}>
+              <span aria-hidden="true">⌕</span>
+              <input aria-label="Search costs" placeholder="Search costs…" value={search} onChange={(e) => setSearch(e.target.value)} />
+              <span className="kbd">↵ Explorer</span>
+            </form>
+            <div style={{ flex: 1 }} />
+            <span className="small" style={{ display: "inline-flex" }}><FreshnessIndicator freshness="Fresh" monthState="Estimated" reconciliation="Reconciled" dataAsOf={DATA_AS_OF} /></span>
+            <button className="btn-ghost" onClick={() => setTheme(theme === "light" ? "dark" : "light")} aria-label="Toggle dark theme" style={{ padding: "8px 14px" }}>{theme === "light" ? "☾ Dark" : "☀ Light"}</button>
+            {me ? (
+              <span className="user-chip">
+                <span className="avatar" aria-hidden="true">{initials}</span>
+                <span style={{ lineHeight: 1.25 }}>
+                  <strong style={{ display: "block", fontSize: 13 }}>{me.name}</strong>
+                  <span className="small muted">{me.email} · {me.role}</span>
+                </span>
+                <button className="btn-ghost" onClick={logout} style={{ padding: "6px 12px" }}>Log out</button>
+              </span>
+            ) : (
+              <Link href="/login" className="small">Sign in</Link>
+            )}
+          </header>
+          <main className="shell-content">
+            <p className="caption" aria-label="Breadcrumb">Ledger / {crumb}</p>
+            <div className="banner" style={{ background: live ? "var(--status-success-bg)" : "var(--status-warning-bg)" }}>
+              {live ? (
+                <><strong>Live provider data</strong> — LEDGER_DATA_SOURCE=live. Configured: {(source?.providers || []).filter((p) => p.configured).map((p) => p.provider).join(", ") || "none"}. {notConnected.length > 0 && <>Not connected (no fake numbers for these): {notConnected.join(", ")}.</>} See <Link href="/connections">Connections</Link> and <Link href="/demo">Demo walkthrough</Link>.</>
+              ) : (
+                <><strong>Demo data</strong> — connect a provider to see real billing. Synthetic data only; no real credentials, no network calls at runtime. Set LEDGER_DATA_SOURCE=live with provider env vars to switch to live data (see docs/REAL_ACCOUNTS.md). Judge walkthrough: <Link href="/demo">/demo</Link>.</>
+              )}
+            </div>
+            {accounts && (() => {
+              const active = accounts.filter((a) => a.status !== "Paused").length;
+              const flagged = accounts.filter((a) => a.status === "Paused" || a.status === "Broken");
+              return (
+                <div className="banner" style={{ background: flagged.length ? "var(--status-warning-bg)" : "var(--bg-sunken)" }}>
+                  <span className="small">Connected accounts: <strong>{accounts.length}</strong> · Active: <strong>{active}</strong></span>
+                  {flagged.length > 0 && <span className="small"> · ⚠ Paused / broken: {flagged.map((a) => a.displayName).join(", ")} — paused accounts are excluded from /api/query totals. Manage them in <Link href="/settings">Settings › Connected accounts</Link>.</span>}
+                  {flagged.length === 0 && <span className="small"> · Manage them in <Link href="/settings">Settings › Connected accounts</Link>.</span>}
+                </div>
+              );
+            })()}
+            {children}
+          </main>
+        </div>
       </div>
     </div>
   );
