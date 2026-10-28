@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { allRows } from "../src/lib/data";
 import {
-  applyScenario, cleanScenario, defaultScenario, presetScenario, scenarioMultiplier, scenarioSummary,
+  applyScenario, cleanScenario, defaultScenario, impactRows, multiplierChanges, presetScenario, scenarioMultiplier, scenarioSummary, sumByField,
 } from "../src/lib/demo-scenario";
 
 describe("demo scenario", () => {
@@ -38,6 +38,33 @@ describe("demo scenario", () => {
     expect(() => cleanScenario({ active: true, providerMultipliers: { Oracle: 2 } })).toThrow();
     expect(() => cleanScenario({ active: true, extraAccounts: [{ provider: "AWS", subAccount: "a", service: "b", monthlyBase: -5 }] })).toThrow();
     expect(() => cleanScenario({ active: true, extraAccounts: [{ provider: "AWS", subAccount: "a", service: "b", monthlyBase: 1 }, { provider: "AWS", subAccount: "a", service: "c", monthlyBase: 1 }] })).toThrow(/Duplicate/);
+  });
+  it("impact rows show up, down, same and new, with $ and %", () => {
+    const base = allRows();
+    const growth = applyScenario(base, presetScenario("growth"));
+    const byProvider = impactRows(base, growth, "provider");
+    expect(byProvider).toHaveLength(3);
+    expect(byProvider.every((r) => r.direction === "up" && r.deltaPct === 40)).toBe(true);
+    const savings = applyScenario(base, presetScenario("savings"));
+    expect(impactRows(base, savings, "provider").every((r) => r.direction === "down" && r.deltaPct === -30)).toBe(true);
+    expect(impactRows(base, base, "provider").every((r) => r.direction === "same" && r.delta === 0)).toBe(true);
+    const extra = applyScenario(base, { ...defaultScenario(), active: true, extraAccounts: [{ id: "x1", provider: "GCP", subAccount: "demo-new-eu", service: "Demo Compute", monthlyBase: 3000 }] });
+    const newRow = impactRows(base, extra, "subAccount").find((r) => r.label === "demo-new-eu")!;
+    expect(newRow.direction).toBe("new");
+    expect(newRow.baseline).toBe(0);
+    expect(newRow.deltaPct).toBeNull();
+    expect(newRow.preview).toBeGreaterThan(0);
+  });
+  it("sumByField and multiplierChanges list only real changes", () => {
+    const byService = sumByField(allRows(), "service");
+    expect(byService.find((d) => d.label === "Amazon EC2")!.cost).toBeGreaterThan(80000);
+    expect(multiplierChanges(defaultScenario())).toEqual([]);
+    expect(multiplierChanges(presetScenario("spike"))).toEqual([{ label: "Amazon EC2 (service)", multiplier: 2, direction: "up" }]);
+    const mixed = multiplierChanges({ ...defaultScenario(), active: true, globalMultiplier: 0.5, providerMultipliers: { Azure: 2 } });
+    expect(mixed).toEqual([
+      { label: "Everything (global)", multiplier: 0.5, direction: "down" },
+      { label: "Azure (provider)", multiplier: 2, direction: "up" },
+    ]);
   });
   it("presets are active and summarise honestly", () => {
     expect(presetScenario("growth").active).toBe(true);

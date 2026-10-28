@@ -31,6 +31,29 @@ and anomalies stay internally consistent.
 - **The seeded dataset itself.** Reset (DELETE `/api/demo-scenario`, or
   the Reset button) returns to the original seeded demo in one click.
 
+## What a preset changes — read before you save (v1.5.1)
+
+Clicking a preset does not just change the totals. Studio now shows,
+immediately, a **"What this preset changes"** panel, computed from the
+same rows the dashboards use:
+
+- A count of options going **up ▲** (red, cost up), going **down ▼**
+  (green, cost down), unchanged, and **added ✚** (new extra accounts).
+- The exact multipliers that changed (e.g. "Everything ×1.4 ▲ up",
+  "Amazon EC2 ×2 ▲ up", "Everything ×0.7 ▼ down").
+- Three tables — by provider, by fake account, by service — each with
+  **Original → With this draft → Change ($ and %)**. A new extra
+  account shows as $0 → its preview total, labelled "new", never as a
+  percentage.
+- Changed multiplier fields themselves are highlighted in the form:
+  a field above ×1 gets a red tint and "▲ up", below ×1 a green tint
+  and "▼ down". Editing any field by hand clears the preset highlight,
+  so the panel always describes the draft on screen, not the preset
+  you clicked earlier.
+
+If the panel says "Nothing changes", the draft is the original demo —
+save it only if that is what you mean.
+
 ## Where it reflects
 
 Overview, Cost Explorer, Budgets, Anomalies, Forecast, Allocation and the
