@@ -10,9 +10,12 @@ import { LineChart, DonutChart, BarChart } from "../components/Charts";
 import DataTable from "../components/DataTable";
 import AnomalyCard from "../components/AnomalyCard";
 import BudgetMeter from "../components/BudgetMeter";
+import { useScenarioRows } from "../components/useScenarioRows";
+import { scenarioSummary } from "../lib/demo-scenario";
 
 export default function Overview() {
-  const rows = useMemo(() => allRows(), []);
+  const baseRows = useMemo(() => allRows(), []);
+  const { rows, scenario } = useScenarioRows(baseRows);
   const months = useMemo(() => monthlyTotals(rows), [rows]);
   const mtd = monthCost(rows, "2026-10");
   const last = monthCost(rows, "2026-09");
@@ -44,6 +47,11 @@ export default function Overview() {
           <Link href="/demo" className="btn-ghost">Judge walkthrough</Link>
         </div>
       </div>
+      {scenario?.active && (
+        <section className="banner" style={{ background: "var(--status-info-bg)" }}>
+          <span className="small"><strong>Demo scenario active:</strong> {scenarioSummary(scenario)} — demo data only. Change it in <Link href="/demo-studio">Demo Studio</Link>, then reload this page.</span>
+        </section>
+      )}
       {accounts && (
         <section className="card" style={{ marginBottom: 16 }}>
           <h2>Connected accounts</h2>

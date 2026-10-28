@@ -5,9 +5,11 @@ import { allRows, RECOMMENDATIONS } from "../../lib/data";
 import { monthCost } from "../../lib/data";
 import { currentMonthForecast, detectAnomalies } from "../../lib/insights";
 import { fmtMoneyFull } from "../../lib/format";
+import { useScenarioRows } from "../../components/useScenarioRows";
 
 export default function Demo() {
-  const rows = useMemo(() => allRows(), []);
+  const baseRows = useMemo(() => allRows(), []);
+  const { rows } = useScenarioRows(baseRows);
   const mtd = monthCost(rows, "2026-10");
   const anomaly = detectAnomalies(rows)[0];
   const savings = RECOMMENDATIONS.filter((r) => r.status === "Open").reduce((a, r) => a + r.monthlySavings, 0);

@@ -5,8 +5,11 @@ import { evaluateBudgets } from "../../lib/insights";
 import BudgetMeter from "../../components/BudgetMeter";
 import DataTable from "../../components/DataTable";
 import Badge from "../../components/Badge";
+import { useScenarioRows } from "../../components/useScenarioRows";
 export default function Budgets() {
-  const budgets = useMemo(() => evaluateBudgets(allRows()), []);
+  const baseRows = useMemo(() => allRows(), []);
+  const { rows } = useScenarioRows(baseRows);
+  const budgets = useMemo(() => evaluateBudgets(rows), [rows]);
   return (
     <div>
       <h1>Budgets &amp; Alerts</h1>

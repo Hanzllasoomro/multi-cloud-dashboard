@@ -6,6 +6,8 @@ import type { CostBasis, GroupKey, Provider } from "../../../lib/types";
 import { getDataSource } from "../../../lib/providers/source";
 import { fetchLiveRows } from "../../../lib/providers/index";
 import { excludePausedRows, expandAccountIds, listAccounts } from "../../../lib/accounts";
+import { applyScenario } from "../../../lib/demo-scenario";
+import { loadScenario } from "../../../lib/demo-scenario-store";
 import { requireUser } from "../../../lib/auth-guard";
 // GET /api/query?groupBy=service&provider=AWS&start=2025-11-01&end=2026-10-26&costBasis=billed&topN=10
 // Demo (default): deterministic synthetic rows. Live: configured providers only;
@@ -21,6 +23,10 @@ export async function GET(req: NextRequest) {
       start: p.get("start") || "2025-11-01", end: p.get("end") || "2026-10-26",
     });
     rows = live.rows; liveErrors = live.errors;
+  } else {
+    // Demo Studio (v1.5): an active saved scenario scales the demo rows
+    // before pausing/filtering, so /api/query matches the browser pages.
+    rows = applyScenario(rows, loadScenario());
   }
   // Connected accounts actually affect totals: paused accounts are excluded
   // (demo: by scope.accounts; live: paused/unconfigured providers contribute

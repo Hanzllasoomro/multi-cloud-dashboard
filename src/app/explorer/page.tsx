@@ -8,12 +8,14 @@ import { toCsvExport, toJsonExport } from "../../lib/exports";
 import FilterBar, { DEFAULT_FILTERS } from "../../components/FilterBar";
 import { LineChart, BarChart } from "../../components/Charts";
 import DataTable from "../../components/DataTable";
+import { useScenarioRows } from "../../components/useScenarioRows";
 
 const SERVICES = ["Amazon EC2", "Amazon S3", "Amazon RDS", "AWS Lambda", "Virtual Machines", "Blob Storage", "SQL Database", "Compute Engine", "Cloud Storage", "Cloud SQL"];
 const REGIONS = ["us-east-1", "eu-west-1", "westeurope", "eastus", "us-central1", "europe-west1"];
 
 export default function Explorer() {
-  const rows = useMemo(() => allRows(), []);
+  const baseRows = useMemo(() => allRows(), []);
+  const { rows } = useScenarioRows(baseRows);
   const [filters, setFilters] = useState(DEFAULT_FILTERS);
   const [groupBy, setGroupBy] = useState<GroupKey>("service");
   const [granularity, setGranularity] = useState<"month" | "day">("month");
