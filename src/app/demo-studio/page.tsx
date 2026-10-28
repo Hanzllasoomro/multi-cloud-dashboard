@@ -5,7 +5,8 @@ import { allRows, monthCost } from "../../lib/data";
 import { fmtMoneyFull } from "../../lib/format";
 import {
   cleanScenario, defaultScenario, applyScenario, presetScenario, scenarioSummary,
-  DEMO_ACCOUNTS, DEMO_PROVIDERS, DEMO_SERVICES, type DemoScenario, type ExtraDemoAccount,
+  impactRows, multiplierChanges,
+  DEMO_ACCOUNTS, DEMO_PROVIDERS, DEMO_SERVICES, type DemoScenario, type ExtraDemoAccount, type ImpactRow,
 } from "../../lib/demo-scenario";
 
 const num = (v: string): number => {
@@ -20,6 +21,7 @@ export default function DemoStudio() {
   const [err, setErr] = useState("");
   const [loaded, setLoaded] = useState(false);
   const [extraForm, setExtraForm] = useState({ provider: "AWS" as ExtraDemoAccount["provider"], subAccount: "", service: "", monthlyBase: "5000" });
+  const [lastPreset, setLastPreset] = useState<string | null>(null);
   const canEdit = !!me && ["Owner", "Admin", "FinOps Manager"].includes(me.role);
 
   const refresh = useCallback(async () => {
@@ -28,7 +30,11 @@ export default function DemoStudio() {
         fetch("/api/demo-scenario").then((r) => r.json()).catch(() => ({})),
         fetch("/api/auth/me").then((r) => r.json()).catch(() => ({})),
       ]);
-      if (s.data) setDraft(cleanScenario(s.data));
+      if (s.data) {
+        const cleaned = cleanScenario(s.data);
+        setDraft(cleaned);
+        setLastPreset(cleaned.label === "Growth story — spend up ~40%" ? "growth" : cleaned.label === "EC2 spike story" ? "spike" : cleaned.label === "Savings story — spend down ~30%" ? "savings" : cleaned.label === "Original seeded demo" ? "original" : null);
+      }
       if (m.data) setMe(m.data);
     } catch { /* keep draft; page shows the note below */ }
     setLoaded(true);
@@ -43,6 +49,22 @@ export default function DemoStudio() {
   const previewTotal = useMemo(() => previewRows.reduce((a, r) => a + r.billedCost, 0), [previewRows]);
   const previewMtd = useMemo(() => monthCost(previewRows, "2026-10"), [previewRows]);
   const deltaPct = originalTotal ? ((previewTotal - originalTotal) / originalTotal) * 100 : 0;
+  // Preset impact: baseline vs preview, per provider / account / service.
+  // Computed from the same rows the dashboards use, so the panel can never
+  // disagree with what Overview will show after a reload.
+  const impactProvider = useMemo(() => impactRows(baseRows, previewRows, "provider"), [baseRows, previewRows]);
+  const impactAccount = useMemo(() => impactRows(baseRows, previewRows, "subAccount"), [baseRows, previewRows]);
+  const impactService = useMemo(() => impactRows(baseRows, previewRows, "service"), [baseRows, previewRows]);
+  const multChanges = useMemo(() => multiplierChanges(draft), [draft]);
+  const impactSummary = useMemo(() => {
+    const all = [...impactProvider, ...impactAccount, ...impactService];
+    return {
+      up: all.filter((r) => r.direction === "up").length,
+      down: all.filter((r) => r.direction === "down").length,
+      same: all.filter((r) => r.direction === "same").length,
+      added: all.filter((r) => r.direction === "new").length,
+    };
+  }, [impactProvider, impactAccount, impactService]);
 
   async function save(next: DemoScenario, okMsg: string) {
     setErr(""); setMsg("");
@@ -58,9 +80,11 @@ export default function DemoStudio() {
     const j = await r.json().catch(() => ({}));
     if (!r.ok) { setErr(j.error || "Reset failed"); return; }
     setDraft(cleanScenario(j.data));
+    setLastPreset(null);
     setMsg("Reset to the original seeded demo. Reload any open dashboard tab to see it.");
   }
   function setMult(kind: "provider" | "account" | "service", key: string, value: number) {
+    setLastPreset(null);
     setDraft((d) => {
       const next = { ...d };
       if (kind === "provider") next.providerMultipliers = { ...d.providerMultipliers, [key]: value };
@@ -73,15 +97,42 @@ export default function DemoStudio() {
     e.preventDefault();
     if (!extraForm.subAccount.trim() || !extraForm.service.trim()) { setErr("Extra account needs a sub-account name and a service."); return; }
     if (draft.extraAccounts.some((x) => x.subAccount === extraForm.subAccount.trim())) { setErr("That sub-account name is already used by an extra account."); return; }
+    setLastPreset(null);
     setDraft((d) => ({ ...d, extraAccounts: [...d.extraAccounts, { id: `extra-${Date.now().toString(36)}`, provider: extraForm.provider, subAccount: extraForm.subAccount.trim(), service: extraForm.service.trim(), monthlyBase: num(extraForm.monthlyBase) }] }));
     setExtraForm({ provider: "AWS", subAccount: "", service: "", monthlyBase: "5000" });
     setErr("");
   }
-  const multInput = (label: string, value: number | undefined, onChange: (n: number) => void) => (
-    <label className="small" style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 150 }}>
-      {label}
-      <input className="input" type="number" min={0} max={10} step={0.1} value={value ?? 1} onChange={(e) => onChange(num(e.target.value))} />
-    </label>
+  const multInput = (label: string, value: number | undefined, onChange: (n: number) => void) => {
+    const v = value ?? 1;
+    const changed = v !== 1;
+    const arrow = !changed ? "" : v > 1 ? " ▲ up" : " ▼ down";
+    return (
+      <label className="small" style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 150 }}>
+        <span>{label}<strong style={{ color: changed ? (v > 1 ? "var(--status-danger-text)" : "var(--status-success-text)") : undefined }}>{arrow}</strong></span>
+        <input className="input" type="number" min={0} max={10} step={0.1} value={v} onChange={(e) => onChange(num(e.target.value))}
+          style={changed ? { background: v > 1 ? "var(--status-danger-bg)" : "var(--status-success-bg)", borderColor: v > 1 ? "var(--red-300)" : "var(--green-300)" } : undefined} />
+        {changed && <span className="caption">×{v} vs original</span>}
+      </label>
+    );
+  };
+  const impactTable = (title: string, rows: ImpactRow[]) => (
+    <div style={{ marginTop: 16 }}>
+      <h3>{title}</h3>
+      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+        <thead><tr style={{ textAlign: "left", borderBottom: "1px solid var(--border-default)" }}><th>Name</th><th>Original</th><th>With this draft</th><th>Change</th><th></th></tr></thead>
+        <tbody>{rows.map((r) => (
+          <tr key={r.label} style={{ borderBottom: "1px solid var(--border-default)" }}>
+            <td><strong>{r.label}</strong></td>
+            <td>{fmtMoneyFull(r.baseline)}</td>
+            <td>{fmtMoneyFull(r.preview)}</td>
+            <td style={{ color: r.direction === "up" ? "var(--status-danger-text)" : r.direction === "down" ? "var(--status-success-text)" : undefined, fontWeight: 700 }}>
+              {r.direction === "new" ? `+${fmtMoneyFull(r.delta)} (new)` : r.direction === "same" ? "— no change" : `${r.delta > 0 ? "+" : ""}${fmtMoneyFull(r.delta)} (${r.deltaPct}%)`}
+            </td>
+            <td>{r.direction === "up" ? "▲ up" : r.direction === "down" ? "▼ down" : r.direction === "new" ? "✚ added" : "—"}</td>
+          </tr>
+        ))}</tbody>
+      </table>
+    </div>
   );
   return (
     <div>
@@ -124,16 +175,52 @@ export default function DemoStudio() {
             <input className="input" value={draft.label} onChange={(e) => setDraft({ ...draft, label: e.target.value })} />
           </label>
           <label className="small"><input type="checkbox" checked={draft.active} onChange={(e) => setDraft({ ...draft, active: e.target.checked })} /> Active — apply on save</label>
-          {multInput("Multiply everything by", draft.globalMultiplier, (n) => setDraft({ ...draft, globalMultiplier: n }))}
+          {multInput("Multiply everything by", draft.globalMultiplier, (n) => { setLastPreset(null); setDraft({ ...draft, globalMultiplier: n }); })}
         </div>
         <p className="caption">0 = that slice becomes $0 (useful to simulate an account/service disappearing). Multipliers combine: global × provider × account × service. Range 0–10.</p>
         <h3 style={{ marginTop: 20 }}>Presets (one click, then Save)</h3>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <button className="btn-ghost" disabled={!canEdit} onClick={() => setDraft(presetScenario("original"))}>Original seeded demo</button>
-          <button className="btn-ghost" disabled={!canEdit} onClick={() => setDraft(presetScenario("growth"))}>Growth story (×1.4)</button>
-          <button className="btn-ghost" disabled={!canEdit} onClick={() => setDraft(presetScenario("spike"))}>EC2 spike story (EC2 ×2)</button>
-          <button className="btn-ghost" disabled={!canEdit} onClick={() => setDraft(presetScenario("savings"))}>Savings story (×0.7)</button>
+          <button className={lastPreset === "original" ? "btn" : "btn-ghost"} disabled={!canEdit} onClick={() => { setLastPreset("original"); setDraft(presetScenario("original")); }}>Original seeded demo</button>
+          <button className={lastPreset === "growth" ? "btn" : "btn-ghost"} disabled={!canEdit} onClick={() => { setLastPreset("growth"); setDraft(presetScenario("growth")); }}>Growth story (×1.4)</button>
+          <button className={lastPreset === "spike" ? "btn" : "btn-ghost"} disabled={!canEdit} onClick={() => { setLastPreset("spike"); setDraft(presetScenario("spike")); }}>EC2 spike story (EC2 ×2)</button>
+          <button className={lastPreset === "savings" ? "btn" : "btn-ghost"} disabled={!canEdit} onClick={() => { setLastPreset("savings"); setDraft(presetScenario("savings")); }}>Savings story (×0.7)</button>
         </div>
+        <p className="caption" style={{ marginTop: 8 }}>Click a preset, then read "What this preset changes" below before you save — it lists every option that goes up, down, stays the same, or is added.</p>
+      </section>
+
+      <section className="card" style={{ marginBottom: 16 }}>
+        <h2>What this {lastPreset ? "preset" : "draft"} changes — vs the original seeded demo</h2>
+        <p className="small">
+          {lastPreset ? <>Preset clicked: <strong>{draft.label}</strong>. </> : <>Current draft vs original. </>}
+          <strong style={{ color: "var(--status-danger-text)" }}>{impactSummary.up} going up ▲</strong> ·{" "}
+          <strong style={{ color: "var(--status-success-text)" }}>{impactSummary.down} going down ▼</strong> ·{" "}
+          {impactSummary.same} unchanged · {impactSummary.added} added ✚
+          {" "}(counted across providers, accounts and services; a multiplier that touches several rows counts once per row group).
+        </p>
+        {multChanges.length === 0 && draft.extraAccounts.length === 0 ? (
+          <p className="small"><strong>Nothing changes.</strong> Every multiplier is ×1 and no extra account is added — this draft is the original demo.</p>
+        ) : (
+          <>
+            {multChanges.length > 0 && (
+              <p className="small"><strong>Multipliers changed:</strong>{" "}
+                {multChanges.map((m) => (
+                  <span key={m.label} style={{ color: m.direction === "up" ? "var(--status-danger-text)" : "var(--status-success-text)", fontWeight: 700 }}>
+                    {m.label} ×{m.multiplier} {m.direction === "up" ? "▲ up" : "▼ down"};{" "}
+                  </span>
+                ))}
+              </p>
+            )}
+            {draft.extraAccounts.length > 0 && (
+              <p className="small"><strong>Added (new, not in the original):</strong>{" "}
+                {draft.extraAccounts.map((x) => `${x.subAccount} (${x.provider} · ${x.service}, ${fmtMoneyFull(x.monthlyBase)}/month)`).join("; ")}.
+              </p>
+            )}
+            <p className="caption">Cost up is red and cost down is green, as on every Ledger page — the arrow and the $ change carry the meaning, never colour alone. Totals below are 12-month billing-month totals, the same basis as the Overview totals.</p>
+          </>
+        )}
+        {impactTable("By provider", impactProvider)}
+        {impactTable("By fake account", impactAccount)}
+        {impactTable("By service", impactService)}
       </section>
 
       <section className="card" style={{ marginBottom: 16 }}>
@@ -157,7 +244,7 @@ export default function DemoStudio() {
         {draft.extraAccounts.length === 0 ? <p className="small">None yet. Add one below — it gets a full 12 months of daily demo rows at roughly its monthly base, so it shows up everywhere scaled rows do.</p> : (
           <ul>{draft.extraAccounts.map((x) => (
             <li key={x.id} className="small">{x.provider} · <strong>{x.subAccount}</strong> · {x.service} · {fmtMoneyFull(x.monthlyBase)}/month{" "}
-              <button className="btn-ghost" style={{ padding: "2px 8px" }} disabled={!canEdit} onClick={() => setDraft({ ...draft, extraAccounts: draft.extraAccounts.filter((e) => e.id !== x.id) })}>Remove</button>
+              <button className="btn-ghost" style={{ padding: "2px 8px" }} disabled={!canEdit} onClick={() => { setLastPreset(null); setDraft({ ...draft, extraAccounts: draft.extraAccounts.filter((e) => e.id !== x.id) }); }}>Remove</button>
             </li>
           ))}</ul>
         )}

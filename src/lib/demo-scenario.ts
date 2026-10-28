@@ -176,6 +176,48 @@ export function applyScenario(rows: CostRow[], scenario: DemoScenario): CostRow[
   if (!scenario.extraAccounts.length) return scaled;
   return [...scaled, ...scenario.extraAccounts.flatMap(extraRowsFor)];
 }
+export type ImpactField = "provider" | "subAccount" | "service";
+export interface ImpactRow {
+  label: string; baseline: number; preview: number; delta: number;
+  /** Null when the baseline is $0 (a new account/service) — the change is "New", not a %. */
+  deltaPct: number | null;
+  direction: "up" | "down" | "same" | "new";
+}
+/** Sum billed cost by one field, over every row (billing-month totals, the
+ *  same basis as the Overview totals — not the Explorer's charge-date filter). */
+export function sumByField(rows: CostRow[], field: ImpactField): { label: string; cost: number }[] {
+  const map = new Map<string, number>();
+  rows.forEach((r) => {
+    const label = field === "provider" ? r.provider : field === "subAccount" ? r.subAccount : r.service;
+    map.set(label, (map.get(label) || 0) + r.billedCost);
+  });
+  return [...map.entries()].map(([label, cost]) => ({ label, cost: round2(cost) })).sort((a, b) => b.cost - a.cost);
+}
+/** Baseline vs preview for one field: every label from either side, so a
+ *  new extra account shows as baseline $0 → preview, never silently dropped. */
+export function impactRows(baselineRows: CostRow[], previewRows: CostRow[], field: ImpactField): ImpactRow[] {
+  const base = new Map(sumByField(baselineRows, field).map((d) => [d.label, d.cost]));
+  const prev = new Map(sumByField(previewRows, field).map((d) => [d.label, d.cost]));
+  const labels = [...new Set([...base.keys(), ...prev.keys()])];
+  return labels.map((label) => {
+    const baseline = base.get(label) || 0;
+    const preview = prev.get(label) || 0;
+    const delta = round2(preview - baseline);
+    const direction: ImpactRow["direction"] = baseline === 0 && preview > 0 ? "new" : delta > 0.005 ? "up" : delta < -0.005 ? "down" : "same";
+    return { label, baseline, preview, delta, deltaPct: baseline > 0 ? round2((delta / baseline) * 100) : null, direction };
+  }).sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta));
+}
+/** Multiplier changes in a draft, in plain words: global, then providers,
+ *  accounts, services — only entries that actually differ from ×1. */
+export function multiplierChanges(s: DemoScenario): { label: string; multiplier: number; direction: "up" | "down" }[] {
+  const out: { label: string; multiplier: number; direction: "up" | "down" }[] = [];
+  const push = (label: string, m: number) => { if (m !== 1) out.push({ label, multiplier: m, direction: m > 1 ? "up" : "down" }); };
+  push("Everything (global)", s.globalMultiplier);
+  for (const [k, v] of Object.entries(s.providerMultipliers)) push(`${k} (provider)`, v);
+  for (const [k, v] of Object.entries(s.accountMultipliers)) push(`${k} (account)`, v);
+  for (const [k, v] of Object.entries(s.serviceMultipliers)) push(`${k} (service)`, v);
+  return out;
+}
 export function scenarioSummary(s: DemoScenario): string {
   if (!s.active) return "Original seeded demo (no scenario active)";
   const parts: string[] = [s.label];
