@@ -4,6 +4,11 @@ Monitor billing, usage, budgets, anomalies, commitments and recommendations acro
 AWS, Azure and GCP (plus extensible providers) in one place. Next.js 14 App Router,
 TypeScript strict, hand-built SVG charts (no chart-library lock-in).
 
+> **New here? Start with [`detail_explanation.md`](detail_explanation.md) —**
+> the full explanation of the project for viewers: every page, the data
+> model, Demo Studio, security, how to run and test it, and what it
+> does *not* do yet.
+
 ## Why this wins (the pitch)
 
 **Problem:** a company's cloud bill is split across AWS, Azure and GCP consoles
