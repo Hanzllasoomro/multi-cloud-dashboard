@@ -11,7 +11,7 @@ const NAV_GROUPS = [
     ["Allocation", "/allocation"], ["Reports", "/reports"], ["Data Health", "/data-health"],
   ] },
   { label: "General", items: [
-    ["Connections", "/connections"], ["Demo walkthrough", "/demo"], ["Settings", "/settings"],
+    ["Connections", "/connections"], ["Demo walkthrough", "/demo"], ["Demo Studio", "/demo-studio"], ["Settings", "/settings"],
   ] },
 ];
 interface SourceState { source: "demo" | "live"; providers: { provider: string; configured: boolean; missing: string[] }[] }

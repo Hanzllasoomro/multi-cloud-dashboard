@@ -3,9 +3,12 @@ import { useMemo, useState } from "react";
 import { allRows } from "../../lib/data";
 import { detectAnomalies } from "../../lib/insights";
 import AnomalyCard from "../../components/AnomalyCard";
+import { useScenarioRows } from "../../components/useScenarioRows";
 export default function Anomalies() {
   const [filter, setFilter] = useState("All");
-  const all = useMemo(() => detectAnomalies(allRows()), []);
+  const baseRows = useMemo(() => allRows(), []);
+  const { rows } = useScenarioRows(baseRows);
+  const all = useMemo(() => detectAnomalies(rows), [rows]);
   const list = filter === "All" ? all : all.filter((a) => a.severity === filter);
   return (
     <div>

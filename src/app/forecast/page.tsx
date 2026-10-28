@@ -5,8 +5,11 @@ import { forecastMonth } from "../../lib/insights";
 import { LineChart } from "../../components/Charts";
 import { fmtMoneyFull, fmtMonth } from "../../lib/format";
 import DataTable from "../../components/DataTable";
+import { useScenarioRows } from "../../components/useScenarioRows";
 export default function Forecast() {
-  const points = useMemo(() => forecastMonth(allRows()), []);
+  const baseRows = useMemo(() => allRows(), []);
+  const { rows } = useScenarioRows(baseRows);
+  const points = useMemo(() => forecastMonth(rows), [rows]);
   const oct = points.find((p) => p.month === "2026-10");
   return (
     <div>

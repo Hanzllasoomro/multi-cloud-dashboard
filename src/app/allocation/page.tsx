@@ -4,9 +4,11 @@ import { allRows, ALLOCATION_RULES } from "../../lib/data";
 import { runQuery } from "../../lib/query";
 import { fmtMoneyFull } from "../../lib/format";
 import DataTable from "../../components/DataTable";
+import { useScenarioRows } from "../../components/useScenarioRows";
 import { BarChart } from "../../components/Charts";
 export default function Allocation() {
-  const rows = useMemo(() => allRows(), []);
+  const baseRows = useMemo(() => allRows(), []);
+  const { rows } = useScenarioRows(baseRows);
   const byTeam = runQuery(rows, { groupBy: ["tag:team"], start: "2025-11-01", end: "2026-10-26", topN: 20 });
   const total = byTeam.totals.cost;
   const allocated = byTeam.data.filter((d) => d.label !== "Untagged").reduce((a, d) => a + d.cost, 0);
