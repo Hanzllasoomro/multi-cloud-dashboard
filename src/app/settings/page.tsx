@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import DataTable from "../../components/DataTable";
 import Badge from "../../components/Badge";
+import SecuritySettings from "../../components/SecuritySettings";
 import { ROLE_MATRIX, ROLES as ALL_ROLES } from "../../lib/permissions";
 
 const ROLES = ROLE_MATRIX.map((r) => ({
@@ -224,7 +225,7 @@ export default function Settings() {
             { key: "c", header: "Created", render: (r) => r.createdAt },
           ]} rows={users} />
         )}
-        <p className="caption">Password reset is via an admin until email reset exists (see docs/SECURITY.md). Demo accounts (LEDGER_DEMO_AUTH) are always Viewers.</p>
+        <p className="caption">Password reset is token-based — see <a href="/forgot-password">Forgot password</a> (docs/SECURITY.md). Demo accounts (LEDGER_DEMO_AUTH) are always Viewers.</p>
       </section>
 
       <section className="card" style={{ marginBottom: 16 }}>
@@ -242,11 +243,8 @@ export default function Settings() {
           { key: "au", header: "Audit log", render: (r) => r.audit },
         ]} rows={ROLES} />
       </section>
-      <section className="card" style={{ marginBottom: 16 }}>
-        <h2>API keys</h2>
-        <p className="small">Keys are stored <strong>hashed</strong> (never returned after creation), with scopes, last-used tracking, expiry and rotation. Example (demo, not a real key): <code>lk_live_••••••••4f2a</code> — FinOps scope, last used Oct 25, 2026, expires Jan 2027.</p>
-        <p className="caption">SSO/SCIM: buy via WorkOS/Auth0/Clerk/Keycloak; the authorisation model itself is owned by Ledger. MFA: TOTP + WebAuthn. Sessions: httpOnly cookies, rotating refresh, CSRF protection.</p>
-      </section>
+      <SecuritySettings />
+      <p className="caption" style={{ marginBottom: 16 }}>SSO/SCIM: buy via WorkOS/Auth0/Clerk/Keycloak; the authorisation model itself is owned by Ledger. WebAuthn is not built yet.</p>
       <section className="card">
         <h2>Audit log (append-only, exportable)</h2>
         <p className="caption">Account actions (add, edit, pause, resume, test, remove) appear here first, newest first, followed by earlier demo entries.</p>

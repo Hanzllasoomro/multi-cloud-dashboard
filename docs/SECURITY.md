@@ -1,14 +1,14 @@
-# Ledger — Security (v1.3.1)
+# Ledger — Security (v1.6)
 
 ## Threat model
 
 | Threat | What an attacker would try | Defence in this version |
 |---|---|---|
-| Credential theft | Steal the user database and crack passwords | Passwords are never stored in plaintext: `scrypt` + per-user random salt (`src/lib/auth.ts`). No password is ever returned by any API or logged. |
-| Session hijacking | Steal or forge a session token | Sessions are random 256-bit tokens, stored server-side only. The browser holds only an `httpOnly`, `SameSite=Lax` cookie (`Secure` in production). Sessions expire after 24h absolute. Middleware only checks cookie *presence*; route handlers validate the token and role (see below). |
+| Credential theft | Steal the user database and crack passwords | Passwords are never stored in plaintext: `scrypt` + per-user random salt (`src/lib/auth/password.ts`). No password is ever returned by any API or logged. |
+| Session hijacking | Steal or forge a session token | Sessions are random 256-bit tokens, stored server-side only, and can be listed/revoked in Settings > Sessions (v1.6). The browser holds only an `httpOnly`, `SameSite=Lax` cookie (`Secure` in production). Sessions expire after 24h absolute. Middleware only checks cookie *presence*; route handlers validate the token and role (see below). |
 | Brute force | Guess passwords by trying many logins | 5 failed attempts per email+IP in 15 minutes, then HTTP 429. Login failures return a generic "Invalid email or password" so valid emails cannot be enumerated. |
 | CSRF | Trick a signed-in browser into calling an auth endpoint | Auth POSTs check `Origin` against `Host` when an Origin header is present, on top of `SameSite=Lax`. |
-| Role escalation / cross-tenant access | A Viewer calls an admin API directly, or reads another tenant's data | Authorization is enforced **server-side** in every API route (`src/lib/auth-guard.ts` + `src/lib/permissions.ts`): unauthenticated → 401, forbidden role → 403. UI hiding is cosmetic only. Scopes are mandatory filters in the query layer (see README). The current store is single-tenant demo data; multi-tenant isolation (tenant_id + RLS) is production work, not claimed here. |
+| Role escalation / cross-tenant access | A Viewer calls an admin API directly, or reads another tenant's data | Authorization is enforced **server-side** in every API route (`src/lib/auth-guard.ts` + `src/lib/permissions.ts`). API keys (`Authorization: Bearer lk_…` / `X-Ledger-Api-Key`) are a second credential, validated by the same guard and inheriting the key owner's role (v1.6).: unauthenticated → 401, forbidden role → 403. UI hiding is cosmetic only. Scopes are mandatory filters in the query layer (see README). The current store is single-tenant demo data; multi-tenant isolation (tenant_id + RLS) is production work, not claimed here. |
 | Secret leakage | Credentials in code, logs, or API responses | No secrets in code. Live cloud credentials stay in server environment variables only. `/api/source` returns env *presence* only, never values. The auth store returns public users only — never a hash. |
 | Demo-account abuse | A judge demo account used as a backdoor | Demo sign-in (`LEDGER_DEMO_AUTH=true`) always creates a **Viewer** session, never Owner, and is **off by default**. It must stay off for real deployments. |
 
@@ -26,6 +26,12 @@
   visits to `/login` and returns 401 for unauthenticated API calls outside
   `/api/auth`. It only checks cookie presence (edge runtime cannot validate
   tokens) — route handlers are the authoritative check.
+- **TOTP MFA (v1.6)** — Settings > Two-factor authentication: two-step setup (secret + otpauth:// URL shown once), 6-digit codes (RFC 6238, SHA-1, 30s, ±1 step for clock skew), 8 one-time backup codes (stored hashed, shown once). Login with MFA on returns 202 + a 5-minute challenge token; the session is only created after `POST /api/auth/mfa/challenge`. Disabling MFA requires the account password. Implemented with Node crypto only — no dependency.
+- **Password reset (v1.6)** — token-based (`/forgot-password` → `/reset-password`): random token, sha256-hashed in the store, 1-hour expiry, single use; the request response is identical whether or not the email exists. Confirming a reset revokes **all** sessions. Ledger has **no email provider configured**: in non-production runs the token is returned in the reset-request response so the flow is usable locally; in production, wire an email sender and do not return the token.
+- **API keys (v1.6)** — Settings > API keys: `lk_` + 32 hex chars, shown in full exactly once, stored only as a sha256 hash, with name/prefix/last-used and revoke. Keys inherit the owner's role at use time; revoking stops them immediately. Middleware passes API-key requests through; the guard validates them.
+- **Session management (v1.6)** — Settings > Sessions lists every session (token prefix, device, IP, last seen, current flagged); "sign out everywhere else" revokes all others.
+- **Auth audit log (v1.6)** — `GET /api/auth/audit` (Owner/Admin/Auditor) and Settings > Auth audit log: logins, MFA, resets, API keys, sessions, role changes, registrations, newest first, capped at 500 events.
+- **Modular backend (v1.6)** — the auth backend was rebuilt as `src/lib/auth/` (password, totp, store, mfa, reset, api-keys) with `src/lib/auth.ts` as a backward-compatible re-export, so existing imports, routes and tests keep working.
 - shadcn-style UI components on Ledger tokens (`src/components/ui/`), with
   accessible labels, focus rings, inline validation errors, and show/hide
   password. See `src/components/ui/README.md` for why this is not a literal
@@ -61,11 +67,13 @@ register once more.
 - **Real database** for users and sessions (now file-backed for local
   dev/single-server use — see above) and for accounts (still in-memory
   and reset on server restart). A DB replaces one module each; API shapes
-  do not change.
-- **MFA (TOTP/WebAuthn)** — not implemented. Do not claim it.
-- **Email password reset** — not implemented. There is deliberately no
-  half-working reset flow: until email reset exists, password reset is via
-  an admin, and the login page says so.
+  do not change. The auth store now also holds API keys, reset tokens,
+  MFA challenges and the audit log in the same file.
+- **WebAuthn / passkeys** — not implemented. MFA is TOTP + backup codes only.
+- **Email delivery for password reset** — the token flow is built and
+  works locally (token returned in non-production runs), but no email
+  provider is wired in: in production, send the token by email and stop
+  returning it in the API response.
 - **SSO/SCIM** — buy via WorkOS / Auth0 / Clerk / Keycloak; Ledger owns only
   the authorization model (see the original plan, WS-01).
 - **Multi-tenant isolation** (tenant_id on every row, Postgres RLS, per-tenant

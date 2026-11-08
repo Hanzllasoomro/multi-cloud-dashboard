@@ -14,7 +14,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     const body = await req.json().catch(() => ({}));
     const role = String(body.role || "") as Role;
     if (!ROLES.includes(role)) return NextResponse.json({ error: "role must be one of: " + ROLES.join(", ") }, { status: 400 });
-    const user = changeUserRole(params.id, role);
+    const user = changeUserRole(params.id, role, auth.user!.id);
     return NextResponse.json({ data: user, totals: { cost: 0, usage: 0, rows: 1 }, meta: metaFor() });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Role change failed";

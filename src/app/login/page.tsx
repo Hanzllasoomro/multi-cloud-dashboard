@@ -8,8 +8,9 @@ import { Alert } from "../../components/ui/alert";
 import { FormField } from "../../components/ui/form-field";
 
 // Sign-in page, built from the shadcn-style ui components (see components/ui/README.md).
-// No password reset flow exists yet (see docs/SECURITY.md): until email reset
-// is built, reset is via an admin — the copy below says so, honestly.
+// MFA: when login returns 202 with a challenge token, this page switches to
+// the code step instead of signing in — the session is only created after
+// POST /api/auth/mfa/challenge succeeds.
 function Login() {
   const router = useRouter();
   const search = useSearchParams();
@@ -22,6 +23,9 @@ function Login() {
   const [loading, setLoading] = useState(false);
   const [demoLoading, setDemoLoading] = useState(false);
   const [hasUsers, setHasUsers] = useState<boolean | null>(null);
+  const [challengeToken, setChallengeToken] = useState("");
+  const [mfaCode, setMfaCode] = useState("");
+  const [mfaLoading, setMfaLoading] = useState(false);
   // If the server's account store is empty (e.g. it was wiped by a
   // restart on an old version), say so plainly: a 401 then means "no
   // account exists", not "wrong password". The status endpoint reveals
@@ -37,9 +41,19 @@ function Login() {
     try {
       const r = await fetch("/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password }) });
       const j = await r.json().catch(() => ({}));
+      if (r.status === 202 && j?.data?.mfaRequired) { setChallengeToken(j.data.challengeToken); return; }
       if (!r.ok) { setErr(j.error || "Sign-in failed."); return; }
       router.push(next); router.refresh();
     } finally { setLoading(false); }
+  }
+  async function submitMfa(e: React.FormEvent) {
+    e.preventDefault(); setErr(""); setMfaLoading(true);
+    try {
+      const r = await fetch("/api/auth/mfa/challenge", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ challengeToken, code: mfaCode }) });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) { setErr(j.error || "Incorrect code."); return; }
+      router.push(next); router.refresh();
+    } finally { setMfaLoading(false); }
   }
   async function demo() {
     setErr(""); setDemoLoading(true);
@@ -69,6 +83,14 @@ function Login() {
             </div>
           )}
           {err && <div style={{ marginBottom: 12 }}><Alert variant="destructive">{err}</Alert></div>}
+          {challengeToken && (
+            <form onSubmit={submitMfa} style={{ marginBottom: 16 }}>
+              <p className="small"><strong>Two-factor authentication.</strong> Enter the 6-digit code from your authenticator app — or one of your backup codes (XXXX-XXXX).</p>
+              <FormField id="mfa-code" label="Authentication code" autoComplete="one-time-code" required value={mfaCode} onChange={(e) => setMfaCode(e.target.value)} />
+              <Button type="submit" loading={mfaLoading} style={{ width: "100%" }}>Verify and sign in</Button>
+              <p className="caption" style={{ marginTop: 8 }}>The code step expires after 5 minutes. <button type="button" className="btn-ghost" style={{ padding: "2px 8px" }} onClick={() => { setChallengeToken(""); setMfaCode(""); }}>Back to password sign-in</button></p>
+            </form>
+          )}
           <form onSubmit={submit}>
             <FormField id="email" label="Email" type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
             <FormField id="password" label="Password" type={show ? "text" : "password"} autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} description="Minimum 12 characters." />
@@ -79,7 +101,7 @@ function Login() {
           </form>
           <p className="caption" style={{ marginTop: 12 }}>
             No account yet? <Link href="/register">Create one</Link> — the first account registered becomes the Owner.
-            Password reset is via an admin until email reset exists (see docs/SECURITY.md).
+            Forgot your password? <Link href="/forgot-password">Reset it</Link> (token-based; see docs/SECURITY.md).
           </p>
         </CardContent>
         <CardFooter>

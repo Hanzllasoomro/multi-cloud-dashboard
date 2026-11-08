@@ -14,7 +14,7 @@ import { NextRequest, NextResponse } from "next/server";
 // SESSION_COOKIE in src/lib/auth.ts.
 const SESSION_COOKIE = "ledger_session";
 
-const PUBLIC_PATHS = ["/login", "/register"];
+const PUBLIC_PATHS = ["/login", "/register", "/forgot-password", "/reset-password"];
 const PUBLIC_PREFIXES = ["/api/auth", "/_next", "/favicon.ico"];
 
 export function middleware(req: NextRequest) {
@@ -23,7 +23,13 @@ export function middleware(req: NextRequest) {
     return NextResponse.next();
   }
   const hasCookie = Boolean(req.cookies.get(SESSION_COOKIE)?.value);
-  if (!hasCookie) {
+  // API keys are a second credential: a request carrying one passes
+  // middleware and is validated by src/lib/auth-guard.ts (a bad key
+  // still gets 401 there). Middleware cannot validate either credential
+  // — it only checks presence.
+  const authHeader = req.headers.get("authorization") || "";
+  const hasApiKey = authHeader.startsWith("Bearer lk_") || Boolean(req.headers.get("x-ledger-api-key"));
+  if (!hasCookie && !hasApiKey) {
     if (path.startsWith("/api/")) {
       return NextResponse.json({ error: "Authentication required — sign in first." }, { status: 401 });
     }

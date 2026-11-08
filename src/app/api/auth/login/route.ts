@@ -1,8 +1,8 @@
 export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from "next/server";
 import {
-  clearFailedAttempts, createSession, getStoredUserByEmail, isRateLimited,
-  originOk, rateLimitKey, recordFailedAttempt, sessionCookieHeader, validateEmail,
+  clearFailedAttempts, createMfaChallenge, createSession, getStoredUserByEmail, isRateLimited,
+  logAuthEvent, originOk, rateLimitKey, recordFailedAttempt, sessionCookieHeader, validateEmail,
   verifyPassword,
 } from "../../../../lib/auth";
 import { clientIp } from "../../../../lib/auth-guard";
@@ -11,6 +11,9 @@ import { metaFor } from "../../../../lib/query";
 // POST /api/auth/login — generic "Invalid email or password" on failure so
 // an attacker cannot tell a valid email from an invalid one. Rate-limited:
 // 5 failed attempts per email+IP in 15 minutes, then 429.
+// If the user has MFA enabled, this returns 202 with { mfaRequired: true,
+// challengeToken } and NO session — the client must complete the challenge
+// at POST /api/auth/mfa/challenge before a session is created.
 export async function POST(req: NextRequest) {
   if (!originOk(req.headers.get("origin"), req.headers.get("host"))) {
     return NextResponse.json({ error: "Origin check failed." }, { status: 403 });
@@ -25,11 +28,18 @@ export async function POST(req: NextRequest) {
   const user = validateEmail(email) ? undefined : getStoredUserByEmail(email);
   if (!user || !verifyPassword(password, user.passwordHash)) {
     recordFailedAttempt(key);
+    logAuthEvent("login_failed", { email, detail: "Invalid email or password.", ip: clientIp(req) });
     return NextResponse.json({ error: "Invalid email or password." }, { status: 401 });
   }
   clearFailedAttempts(key);
-  const session = createSession(user.id);
-  const res = NextResponse.json({ data: { id: user.id, email: user.email, name: user.name, role: user.role, createdAt: user.createdAt }, totals: { cost: 0, usage: 0, rows: 1 }, meta: metaFor() });
+  if (user.mfaEnabled) {
+    const challengeToken = createMfaChallenge(user.id);
+    logAuthEvent("login_mfa_required", { userId: user.id, email: user.email, ip: clientIp(req) });
+    return NextResponse.json({ data: { mfaRequired: true, challengeToken }, totals: { cost: 0, usage: 0, rows: 1 }, meta: metaFor() }, { status: 202 });
+  }
+  const session = createSession(user.id, { userAgent: req.headers.get("user-agent") || undefined, ip: clientIp(req) });
+  logAuthEvent("login_success", { userId: user.id, email: user.email, ip: clientIp(req) });
+  const res = NextResponse.json({ data: { id: user.id, email: user.email, name: user.name, role: user.role, createdAt: user.createdAt, mfaEnabled: !!user.mfaEnabled }, totals: { cost: 0, usage: 0, rows: 1 }, meta: metaFor() });
   res.headers.set("Set-Cookie", sessionCookieHeader(session.token, process.env.NODE_ENV === "production"));
   return res;
 }

@@ -1,6 +1,7 @@
 export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from "next/server";
 import { createSession, originOk, registerUser, sessionCookieHeader } from "../../../../lib/auth";
+import { clientIp } from "../../../../lib/auth-guard";
 import { metaFor } from "../../../../lib/query";
 
 // POST /api/auth/register — first user becomes Owner, later users Viewer.
@@ -12,7 +13,7 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json().catch(() => ({}));
     const user = registerUser(String(body.email || ""), String(body.name || ""), String(body.password || ""));
-    const session = createSession(user.id);
+    const session = createSession(user.id, { userAgent: req.headers.get("user-agent") || undefined, ip: clientIp(req) });
     const res = NextResponse.json({ data: user, totals: { cost: 0, usage: 0, rows: 1 }, meta: metaFor() }, { status: 201 });
     res.headers.set("Set-Cookie", sessionCookieHeader(session.token, process.env.NODE_ENV === "production"));
     return res;

@@ -595,9 +595,11 @@ static keys, scrypt passwords, httpOnly sessions, lockout, origin
 checks, no secrets in code/logs/API responses, hashed API keys
 (never returned after creation), CSV formula-injection escaping,
 and an append-only audit log for account actions. Full detail:
-`docs/SECURITY.md`. **Not built yet:** MFA/TOTP, WebAuthn, email
-password reset (admin reset until then), SSO/SCIM, and a real
-database (see Section 16).
+`docs/SECURITY.md`. **v1.6 added:** TOTP MFA with backup codes, token-based
+password reset (no email provider wired yet — the token is returned in
+non-production runs), real API keys, session management and an auth
+audit log; the auth backend is now modular (`src/lib/auth/`).
+**Not built yet:** WebAuthn, SSO/SCIM, and a real database (see Section 16).
 
 ## 10. API reference
 
@@ -864,10 +866,11 @@ These are the real limits, stated plainly:
    proposal for accounts exists but is not built). A real database
    replaces exactly those modules later, without changing API
    shapes.
-3. **No MFA/TOTP, no WebAuthn, no email password reset, no
-   SSO/SCIM.** Password reset is via an admin until email reset
-   exists. Do not use this for production accounts with sensitive
-   data until those exist.
+3. **No WebAuthn, no SSO/SCIM, no email delivery for password
+   reset.** TOTP MFA and the token-based reset flow are built (v1.6),
+   but the reset token is only returned in non-production runs — no
+   email provider is wired in. Do not use this for production accounts
+   with sensitive data until those exist.
 4. **Budget scope rows are proportional estimates** (AWS 52%,
    Engineering 41% of the total), not scoped re-queries. See
    Section 8.
@@ -917,7 +920,7 @@ without breaking API shapes where possible:
 4. **Scoped budget evaluation** (re-query each budget's scope
    instead of proportional shares) and budget *creation* in the
    UI (today the three budgets are seeded definitions).
-5. **MFA (TOTP + WebAuthn), email password reset, SSO/SCIM**
+5. **WebAuthn, email delivery for password reset, SSO/SCIM**
    (via WorkOS/Auth0/Clerk/Keycloak as the plan suggests; the
    authorisation model itself stays Ledger-owned).
 6. **Live-mode verification** against real AWS/Azure/GCP accounts
@@ -1037,7 +1040,7 @@ If you remember one thing from this document, remember this:
 claim to have solved multi-cloud billing in production.** The
 query engine, anomaly detection, forecast, budgets, allocation,
 auth and Demo Studio all genuinely run and can be tested with the
-numbers in this document. The live connections, database, MFA,
+numbers in this document. The live connections, database,
 SSO, alert delivery and PDF exports are the honest next steps —
 not hidden gaps, and not claimed features. Judge it on what it
 does, test it with Demo Studio, and use the roadmap in Section 17

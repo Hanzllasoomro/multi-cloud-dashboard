@@ -23,7 +23,7 @@ describe("demo scenario", () => {
     expect(scenarioMultiplier(s, ec2)).toBe(6);
   });
   it("extra demo accounts add a full 12-month daily set", () => {
-    const s = { ...defaultScenario(), active: true, extraAccounts: [{ id: "x1", provider: "GCP", subAccount: "demo-acme-eu", service: "Demo Compute", monthlyBase: 3000 }] };
+    const s = { ...defaultScenario(), active: true, extraAccounts: [{ id: "x1", provider: "GCP" as const, subAccount: "demo-acme-eu", service: "Demo Compute", monthlyBase: 3000 }] };
     const out = applyScenario(allRows(), s);
     const extra = out.filter((r) => r.subAccount === "demo-acme-eu");
     expect(extra.length).toBeGreaterThan(300);
