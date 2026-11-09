@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import Link from "next/link";
 import { allRows, CONNECTIONS, monthCost, monthlyTotals, RECOMMENDATIONS } from "../lib/data";
 import { runQuery } from "../lib/query";
@@ -11,11 +11,10 @@ import DataTable from "../components/DataTable";
 import AnomalyCard from "../components/AnomalyCard";
 import BudgetMeter from "../components/BudgetMeter";
 import { useScenarioRows } from "../components/useScenarioRows";
-import { scenarioSummary } from "../lib/demo-scenario";
 
 export default function Overview() {
   const baseRows = useMemo(() => allRows(), []);
-  const { rows, scenario } = useScenarioRows(baseRows);
+  const { rows } = useScenarioRows(baseRows);
   const months = useMemo(() => monthlyTotals(rows), [rows]);
   const mtd = monthCost(rows, "2026-10");
   const last = monthCost(rows, "2026-09");
@@ -29,9 +28,6 @@ export default function Overview() {
   const delta = last ? ((mtd - last) / last) * 100 : null;
   const fcSeries = months.map((m) => m.month === "2026-10" ? fc.forecast : m.cost);
   // Unit economics: total 12-month cost / days in range.
-  const [accounts, setAccounts] = useState<{ displayName: string; status: string }[] | null>(null);
-  useEffect(() => { fetch("/api/accounts").then((r) => r.json()).then((j) => setAccounts(j.data)).catch(() => undefined); }, []);
-  const flagged = (accounts || []).filter((a) => a.status === "Paused" || a.status === "Broken");
   const total12 = months.reduce((a, m) => a + m.cost, 0);
   const daysInRange = Math.round((new Date(2026, 9, 26).getTime() - new Date(2025, 10, 1).getTime()) / 86400000) + 1;
   const costPerDay = total12 / daysInRange;
@@ -47,19 +43,6 @@ export default function Overview() {
           <Link href="/demo" className="btn-ghost">Judge walkthrough</Link>
         </div>
       </div>
-      {scenario?.active && (
-        <section className="banner" style={{ background: "var(--status-info-bg)" }}>
-          <span className="small"><strong>Demo scenario active:</strong> {scenarioSummary(scenario)} — demo data only. Change it in <Link href="/demo-studio">Demo Studio</Link>, then reload this page.</span>
-        </section>
-      )}
-      {accounts && (
-        <section className="card" style={{ marginBottom: 16 }}>
-          <h2>Connected accounts</h2>
-          <p><strong>{accounts.length}</strong> connected · <strong>{accounts.filter((a) => a.status !== "Paused").length}</strong> active
-            {flagged.length > 0 && <> · ⚠ Paused / broken: {flagged.map((a) => a.displayName).join(", ")} — paused accounts are excluded from API query totals.</>}
-            {" "}Manage them in <Link href="/settings">Settings › Connected accounts</Link>.</p>
-        </section>
-      )}
       <div className="grid grid-4" style={{ marginBottom: 16 }}>
         <KpiCard tone="hero" label="Month-to-date spend (Oct 2026)" value={fmtMoneyFull(mtd)} deltaPct={delta} href="/explorer" spark={months.slice(-6).map((m) => m.cost)} estimated />
         <KpiCard label="Month-end forecast" value={fmtMoneyFull(fc.forecast)} kind="plain" href="/forecast" spark={months.slice(-6).map((m) => m.cost)} estimated caption="Estimated month-end" />
