@@ -1035,6 +1035,7 @@ the demo tooling in one flow, without pretending the data is live.
 | (docs) | `cf16645e` | Docs-only: Demo Studio testing guide (8 scenarios) — no code or version change |
 | 1.6 | `9fb4d665` | Full auth/backend rebuild: TOTP MFA, password reset, API keys, session management, auth audit log; modular `src/lib/auth/`; 56 tests |
 | 1.7 | `849e9dde` | Postgres store (Vercel Postgres) for users, sessions, API keys, reset tokens, MFA challenges, audit log and connected accounts when `DATABASE_URL` is set; file/in-memory fallback otherwise; 61 tests |
+| 1.8 | `42f8627f` | Frontend clean-up (frontend-only): removed `/demo` and `/demo-studio` pages, sidebar links, demo/live banner, demo sign-in button and guidance captions from all pages; seeded data and demo backend APIs unchanged; 61 tests, build passes |
 
 ### A final note to viewers
 
