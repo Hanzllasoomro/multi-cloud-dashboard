@@ -6,7 +6,7 @@
 > page does, how the data works, how security works, how to run and
 > test it, and — just as importantly — what it does **not** do yet.
 >
-> **Current version:** 1.8.0 · **Stack:** Next.js 14 (App Router) +
+> **Current version:** 1.8.1 · **Stack:** Next.js 14 (App Router) +
 > TypeScript (strict) + React 18 · **Charts:** hand-built SVG, no
 > chart library · **Tests:** 46 Vitest tests, all passing ·
 > **Licence:** MIT · **Repo:**
@@ -1032,10 +1032,11 @@ the demo tooling in one flow, without pretending the data is live.
 | 1.4 | `6bcffa97` | UI refresh modelled on a Dribbble dashboard, adapted not copied: rounded frame, forest-green hero card |
 | 1.5 | `e125c05c` | Demo Studio: multipliers, presets, extra demo accounts, file-backed scenarios, demo-mode only |
 | 1.5.1 | `86ff2118` | Demo Studio preset impact: what goes up/down/unchanged/added, per provider/account/service, highlighted fields |
-| (docs) | `cf16645e` | Docs-only: Demo Studio testing guide (8 scenarios) — no code or version change |
 | 1.6 | `9fb4d665` | Full auth/backend rebuild: TOTP MFA, password reset, API keys, session management, auth audit log; modular `src/lib/auth/`; 56 tests |
 | 1.7 | `849e9dde` | Postgres store (Vercel Postgres) for users, sessions, API keys, reset tokens, MFA challenges, audit log and connected accounts when `DATABASE_URL` is set; file/in-memory fallback otherwise; 61 tests |
-| 1.8 | `42f8627f` | Frontend clean-up (frontend-only): removed `/demo` and `/demo-studio` pages, sidebar links, demo/live banner, demo sign-in button and guidance captions from all pages; seeded data and demo backend APIs unchanged; 61 tests, build passes |
+| 1.8 | `526b43f1` | Frontend clean-up that removed `/demo`, `/demo-studio`, the demo banner and demo sign-in — over-reached; superseded by 1.8.1, which restored all demo surfaces |
+| 1.8.1 | `9805a0a1` | Guidance-only clean-up: removed extra intro paragraphs, explanatory captions and step-by-step text across all pages incl. Demo Studio; `/demo`, `/demo-studio`, sidebar links, demo banner and demo sign-in kept; 61 tests, build passes |
+| (docs) | `cf16645e` | Docs-only: Demo Studio testing guide (8 scenarios) — no code or version change |
 
 ### A final note to viewers
 
