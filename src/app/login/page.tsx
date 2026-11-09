@@ -3,7 +3,7 @@ import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "../../components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../components/ui/card";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "../../components/ui/card";
 import { Alert } from "../../components/ui/alert";
 import { FormField } from "../../components/ui/form-field";
 
@@ -21,6 +21,7 @@ function Login() {
   const [show, setShow] = useState(false);
   const [err, setErr] = useState("");
   const [loading, setLoading] = useState(false);
+  const [demoLoading, setDemoLoading] = useState(false);
   const [hasUsers, setHasUsers] = useState<boolean | null>(null);
   const [challengeToken, setChallengeToken] = useState("");
   const [mfaCode, setMfaCode] = useState("");
@@ -53,6 +54,15 @@ function Login() {
       if (!r.ok) { setErr(j.error || "Incorrect code."); return; }
       router.push(next); router.refresh();
     } finally { setMfaLoading(false); }
+  }
+  async function demo() {
+    setErr(""); setDemoLoading(true);
+    try {
+      const r = await fetch("/api/auth/demo", { method: "POST" });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) { setErr(j.error || "Demo sign-in is disabled."); return; }
+      router.push("/demo"); router.refresh();
+    } finally { setDemoLoading(false); }
   }
   return (
     <div style={{ maxWidth: 440, margin: "48px auto" }}>
@@ -94,6 +104,11 @@ function Login() {
             Forgot your password? <Link href="/forgot-password">Reset it</Link>.
           </p>
         </CardContent>
+        <CardFooter>
+          <Button variant="outline" loading={demoLoading} onClick={demo} style={{ width: "100%" }}>
+            Continue with demo account
+          </Button>
+        </CardFooter>
       </Card>
     </div>
   );

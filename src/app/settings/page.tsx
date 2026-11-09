@@ -9,6 +9,11 @@ const ROLES = ROLE_MATRIX.map((r) => ({
   role: r.role, plan: r.plan, members: r.members, connections: r.connections, data: r.data,
   budgets: r.budgets, allocation: r.allocation, exports: r.exports, api: r.api, audit: r.audit,
 }));
+const LEGACY_AUDIT = [
+  { when: "2026-10-26 09:12", who: "finops@acme.example", what: "Budget created: Total cloud spend" },
+  { when: "2026-10-25 17:40", who: "admin@acme.example", what: "Connection health check: Azure → Degraded" },
+  { when: "2026-10-24 11:03", who: "analyst@acme.example", what: "Explorer export (CSV, 11 groups)" },
+];
 type Account = {
   id: string; provider: string; displayName: string; accountId: string; billingAccount: string;
   scope: { providers: string[]; accounts: string[]; tags: string[]; teams: string[] };
@@ -44,7 +49,7 @@ export default function Settings() {
         fetch("/api/auth/me").then((r) => r.json()).catch(() => ({})),
       ]);
       setAccounts(a.data || []);
-      setAudit(u.data || []);
+      setAudit([...(u.data || []), ...LEGACY_AUDIT]);
       if (m.data) setMe(m.data);
     } catch { /* keep previous state; table shows empty-state note below */ }
     try {
@@ -156,7 +161,7 @@ export default function Settings() {
         )}
         {testResult && (
           <section aria-label="Test connection result" style={{ marginTop: 16, border: "1px solid var(--border-default)", borderRadius: "var(--radius-8)", padding: 12 }}>
-            <h3>Test connection — {testResult.name} ({testResult.passed}/{testResult.total} passed)</h3>
+            <h3>Test connection — {testResult.name} ({testResult.passed}/{testResult.total} passed, {testResult.mode} mode{testResult.mode === "demo" ? ", simulated checklist" : ", env-presence check"})</h3>
             <ul>{testResult.checklist.map((c) => (
               <li key={c.permission}>{c.status === "pass" ? "✓" : "✗"} <strong>{c.permission}</strong> — {c.reason}{c.fix && <> — <em>Fix: {c.fix}</em></>}</li>
             ))}</ul>
