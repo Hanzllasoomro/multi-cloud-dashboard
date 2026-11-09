@@ -11,10 +11,10 @@ import {
 } from "../src/lib/auth";
 import { can, ROLES } from "../src/lib/permissions";
 
-beforeEach(() => resetAuthStore());
+beforeEach(async () => { await resetAuthStore(); });
 
 describe("password hashing + policy", () => {
-  it("hashes with a per-user salt: same password, different hashes, both verify", () => {
+  it("hashes with a per-user salt: same password, different hashes, both verify", async () => {
     const a = hashPassword("correct-horse-battery");
     const b = hashPassword("correct-horse-battery");
     expect(a).not.toBe(b);
@@ -24,14 +24,14 @@ describe("password hashing + policy", () => {
     expect(verifyPassword("wrong-password-123", a)).toBe(false);
     expect(verifyPassword("correct-horse-battery", "not-a-hash")).toBe(false);
   });
-  it("policy: 12+ chars required, common/empty/repeated rejected", () => {
+  it("policy: 12+ chars required, common/empty/repeated rejected", async () => {
     expect(validatePassword("")).toBeTruthy();
     expect(validatePassword("short123")).toBeTruthy();
     expect(validatePassword("password123")).toBeTruthy();
     expect(validatePassword("aaaaaaaaaaaa")).toBeTruthy();
     expect(validatePassword("a-strong-enough-1")).toBeNull();
   });
-  it("email is lowercased and validated", () => {
+  it("email is lowercased and validated", async () => {
     expect(validateEmail("not-an-email")).toBeTruthy();
     expect(validateEmail("")).toBeTruthy();
     expect(validateEmail("User@Example.com")).toBeNull();
@@ -39,46 +39,46 @@ describe("password hashing + policy", () => {
 });
 
 describe("registration + sessions", () => {
-  it("first user is Owner, later users are Viewer, duplicates rejected, no hash returned", () => {
-    const owner = registerUser("Owner@Example.com", "Owner One", "a-strong-enough-1");
+  it("first user is Owner, later users are Viewer, duplicates rejected, no hash returned", async () => {
+    const owner = await registerUser("Owner@Example.com", "Owner One", "a-strong-enough-1");
     expect(owner.role).toBe("Owner");
     expect(owner.email).toBe("owner@example.com");
     expect(Object.keys(owner)).not.toContain("passwordHash");
-    const viewer = registerUser("viewer@example.com", "Viewer Two", "a-strong-enough-1");
+    const viewer = await registerUser("viewer@example.com", "Viewer Two", "a-strong-enough-1");
     expect(viewer.role).toBe("Viewer");
-    expect(() => registerUser("viewer@example.com", "Again", "a-strong-enough-1")).toThrow("already exists");
-    expect(listUsers()).toHaveLength(2);
+    await expect(registerUser("viewer@example.com", "Again", "a-strong-enough-1")).rejects.toThrow("already exists");
+    expect(await listUsers()).toHaveLength(2);
   });
-  it("session validates, unknown/empty tokens do not, destroy invalidates", () => {
-    const u = registerUser("a@example.com", "A", "a-strong-enough-1");
-    const s = createSession(u.id);
+  it("session validates, unknown/empty tokens do not, destroy invalidates", async () => {
+    const u = await registerUser("a@example.com", "A", "a-strong-enough-1");
+    const s = await createSession(u.id);
     expect(SESSION_TTL_MS).toBe(24 * 60 * 60 * 1000);
-    expect(validateSession(s.token)?.id).toBe(u.id);
-    expect(validateSession("nope")).toBeNull();
-    expect(validateSession(undefined)).toBeNull();
-    destroySession(s.token);
-    expect(validateSession(s.token)).toBeNull();
+    expect((await validateSession(s.token))?.id).toBe(u.id);
+    expect(await validateSession("nope")).toBeNull();
+    expect(await validateSession(undefined)).toBeNull();
+    await destroySession(s.token);
+    expect(await validateSession(s.token)).toBeNull();
   });
-  it("last Owner cannot be demoted; promoting another Owner first allows it", () => {
-    const owner = registerUser("owner@example.com", "Owner", "a-strong-enough-1");
-    const viewer = registerUser("viewer@example.com", "Viewer", "a-strong-enough-1");
-    expect(() => changeUserRole(owner.id, "Viewer")).toThrow("last Owner");
-    changeUserRole(viewer.id, "Owner");
-    expect(changeUserRole(owner.id, "Viewer").role).toBe("Viewer");
+  it("last Owner cannot be demoted; promoting another Owner first allows it", async () => {
+    const owner = await registerUser("owner@example.com", "Owner", "a-strong-enough-1");
+    const viewer = await registerUser("viewer@example.com", "Viewer", "a-strong-enough-1");
+    await expect(changeUserRole(owner.id, "Viewer")).rejects.toThrow("last Owner");
+    await changeUserRole(viewer.id, "Owner");
+    expect((await changeUserRole(owner.id, "Viewer")).role).toBe("Viewer");
   });
-  it("demo auth is off by default and always yields a Viewer", () => {
+  it("demo auth is off by default and always yields a Viewer", async () => {
     delete process.env.LEDGER_DEMO_AUTH;
     expect(demoAuthEnabled()).toBe(false);
     process.env.LEDGER_DEMO_AUTH = "true";
     try {
       expect(demoAuthEnabled()).toBe(true);
-      expect(getOrCreateDemoUser().role).toBe("Viewer");
+      expect((await getOrCreateDemoUser()).role).toBe("Viewer");
     } finally { delete process.env.LEDGER_DEMO_AUTH; }
   });
 });
 
 describe("login rate limiting + origin check", () => {
-  it("5 failures in 15 min lock the key; clearing resets it", () => {
+  it("5 failures in 15 min lock the key; clearing resets it", async () => {
     const key = rateLimitKey("a@example.com", "1.2.3.4");
     expect(isRateLimited(key)).toBe(false);
     for (let i = 0; i < 5; i++) recordFailedAttempt(key);
@@ -86,7 +86,7 @@ describe("login rate limiting + origin check", () => {
     clearFailedAttempts(key);
     expect(isRateLimited(key)).toBe(false);
   });
-  it("origin must match host when present; absent origin is allowed", () => {
+  it("origin must match host when present; absent origin is allowed", async () => {
     expect(originOk("https://ledger.example", "ledger.example")).toBe(true);
     expect(originOk("https://evil.example", "ledger.example")).toBe(false);
     expect(originOk(null, "ledger.example")).toBe(true);
@@ -94,7 +94,7 @@ describe("login rate limiting + origin check", () => {
 });
 
 describe("RBAC matrix (Settings matrix, as code)", () => {
-  it("every role is in the matrix and Viewer/Auditor cannot manage connections", () => {
+  it("every role is in the matrix and Viewer/Auditor cannot manage connections", async () => {
     expect(ROLES).toEqual(["Owner", "Admin", "FinOps Manager", "Analyst", "Viewer", "Auditor"]);
     expect(can("Viewer", "manageConnections")).toBe(false);
     expect(can("Auditor", "manageConnections")).toBe(false);
@@ -103,7 +103,7 @@ describe("RBAC matrix (Settings matrix, as code)", () => {
     expect(can("Admin", "manageConnections")).toBe(true);
     expect(can("FinOps Manager", "manageConnections")).toBe(true);
   });
-  it("audit is Owner/Admin/Auditor only; members is Owner/Admin only", () => {
+  it("audit is Owner/Admin/Auditor only; members is Owner/Admin only", async () => {
     expect(can("Auditor", "viewAudit")).toBe(true);
     expect(can("Owner", "viewAudit")).toBe(true);
     expect(can("Viewer", "viewAudit")).toBe(false);
@@ -112,7 +112,7 @@ describe("RBAC matrix (Settings matrix, as code)", () => {
     expect(can("Admin", "manageMembers")).toBe(true);
     expect(can("FinOps Manager", "manageMembers")).toBe(false);
   });
-  it("any authenticated role can read data (Viewer scoped, others all-data)", () => {
+  it("any authenticated role can read data (Viewer scoped, others all-data)", async () => {
     expect(can("Viewer", "viewAllData")).toBe(false);
     expect(can("Analyst", "viewAllData")).toBe(true);
     expect(can("Auditor", "viewAllData")).toBe(true);

@@ -6,8 +6,8 @@ import { metaFor } from "../../../lib/query";
 
 // GET /api/users — team members, Owner/Admin only (manageMembers).
 export async function GET(req: NextRequest) {
-  const auth = requirePermission(req, "manageMembers");
+  const auth = await requirePermission(req, "manageMembers");
   if (auth.response) return auth.response;
-  const data = listUsers();
+  const data = await listUsers();
   return NextResponse.json({ data, totals: { cost: 0, usage: 0, rows: data.length }, meta: metaFor() });
 }

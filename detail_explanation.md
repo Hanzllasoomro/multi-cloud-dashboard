@@ -6,7 +6,7 @@
 > page does, how the data works, how security works, how to run and
 > test it, and — just as importantly — what it does **not** do yet.
 >
-> **Current version:** 1.5.1 · **Stack:** Next.js 14 (App Router) +
+> **Current version:** 1.7.0 · **Stack:** Next.js 14 (App Router) +
 > TypeScript (strict) + React 18 · **Charts:** hand-built SVG, no
 > chart library · **Tests:** 46 Vitest tests, all passing ·
 > **Licence:** MIT · **Repo:**
@@ -599,7 +599,7 @@ and an append-only audit log for account actions. Full detail:
 password reset (no email provider wired yet — the token is returned in
 non-production runs), real API keys, session management and an auth
 audit log; the auth backend is now modular (`src/lib/auth/`).
-**Not built yet:** WebAuthn, SSO/SCIM, and a real database (see Section 16).
+**Not built yet:** WebAuthn, SSO/SCIM. **v1.7 added:** a Postgres store (Vercel Postgres) for users, sessions, API keys, reset tokens, MFA challenges, audit log and managed accounts, used when `DATABASE_URL` is set; without it the file/in-memory stores are used as before. Live-database verification is still pending a real `DATABASE_URL` (see Section 16).
 
 ## 10. API reference
 
@@ -860,12 +860,13 @@ These are the real limits, stated plainly:
 1. **Demo data by default; live mode never tested against a real
    cloud account here.** See Section 3. Do not present demo
    figures as real billing.
-2. **No real database.** Users/sessions are file-backed
-   (single-server); connected accounts and audit entries are still
-   **in-memory and reset on server restart** (a persistence
-   proposal for accounts exists but is not built). A real database
-   replaces exactly those modules later, without changing API
-   shapes.
+2. **No live-database verification yet.** v1.7 adds a Postgres store
+   (users/sessions/API keys/reset tokens/MFA challenges/audit log/
+   managed accounts) used when `DATABASE_URL` is set; without it the
+   file-backed users/sessions and in-memory accounts are used exactly
+   as before. The Postgres SQL is covered by fake-pool tests, but no
+   live Postgres has been run yet — that check needs a real
+   `DATABASE_URL` (Vercel Postgres).
 3. **No WebAuthn, no SSO/SCIM, no email delivery for password
    reset.** TOTP MFA and the token-based reset flow are built (v1.6),
    but the reset token is only returned in non-production runs — no

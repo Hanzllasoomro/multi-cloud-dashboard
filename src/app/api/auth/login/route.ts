@@ -25,20 +25,20 @@ export async function POST(req: NextRequest) {
   if (isRateLimited(key)) {
     return NextResponse.json({ error: "Too many failed sign-in attempts. Wait 15 minutes and try again." }, { status: 429 });
   }
-  const user = validateEmail(email) ? undefined : getStoredUserByEmail(email);
+  const user = validateEmail(email) ? undefined : await getStoredUserByEmail(email);
   if (!user || !verifyPassword(password, user.passwordHash)) {
     recordFailedAttempt(key);
-    logAuthEvent("login_failed", { email, detail: "Invalid email or password.", ip: clientIp(req) });
+    await logAuthEvent("login_failed", { email, detail: "Invalid email or password.", ip: clientIp(req) });
     return NextResponse.json({ error: "Invalid email or password." }, { status: 401 });
   }
   clearFailedAttempts(key);
   if (user.mfaEnabled) {
-    const challengeToken = createMfaChallenge(user.id);
-    logAuthEvent("login_mfa_required", { userId: user.id, email: user.email, ip: clientIp(req) });
+    const challengeToken = await createMfaChallenge(user.id);
+    await logAuthEvent("login_mfa_required", { userId: user.id, email: user.email, ip: clientIp(req) });
     return NextResponse.json({ data: { mfaRequired: true, challengeToken }, totals: { cost: 0, usage: 0, rows: 1 }, meta: metaFor() }, { status: 202 });
   }
-  const session = createSession(user.id, { userAgent: req.headers.get("user-agent") || undefined, ip: clientIp(req) });
-  logAuthEvent("login_success", { userId: user.id, email: user.email, ip: clientIp(req) });
+  const session = await createSession(user.id, { userAgent: req.headers.get("user-agent") || undefined, ip: clientIp(req) });
+  await logAuthEvent("login_success", { userId: user.id, email: user.email, ip: clientIp(req) });
   const res = NextResponse.json({ data: { id: user.id, email: user.email, name: user.name, role: user.role, createdAt: user.createdAt, mfaEnabled: !!user.mfaEnabled }, totals: { cost: 0, usage: 0, rows: 1 }, meta: metaFor() });
   res.headers.set("Set-Cookie", sessionCookieHeader(session.token, process.env.NODE_ENV === "production"));
   return res;

@@ -13,7 +13,7 @@ import { requireUser } from "../../../lib/auth-guard";
 // Demo (default): deterministic synthetic rows. Live: configured providers only;
 // an unconfigured provider contributes no rows and is reported, never faked.
 export async function GET(req: NextRequest) {
-  const auth = requireUser(req); if (auth.response) return auth.response;
+  const auth = await requireUser(req); if (auth.response) return auth.response;
   const p = req.nextUrl.searchParams;
   const source = getDataSource();
   let rows = allRows();
@@ -33,7 +33,7 @@ export async function GET(req: NextRequest) {
   // no rows — live fetch already skips unconfigured providers). ?accountId=
   // takes managed account ids and expands them to the sub-accounts they cover;
   // ?accounts= takes sub-account names directly (existing behaviour).
-  const managed = listAccounts();
+  const managed = await listAccounts();
   rows = excludePausedRows(rows, managed);
   const accountIds = p.get("accountId")?.split(",").map((s) => s.trim()).filter(Boolean);
   const expanded = accountIds?.length ? expandAccountIds(accountIds, managed) : undefined;

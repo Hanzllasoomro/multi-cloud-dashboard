@@ -9,15 +9,15 @@ import {
   validateSession, verifyMfaChallenge, verifyPassword, verifyTotp,
 } from "../src/lib/auth";
 
-beforeEach(() => resetAuthStore());
+beforeEach(async () => { await resetAuthStore(); });
 const PW = "a-strong-enough-1";
 
-function user(email = "mfa@example.com") {
+async function user(email = "mfa@example.com") {
   return registerUser(email, "MFA User", PW);
 }
 
 describe("TOTP", () => {
-  it("code verifies at the same instant, ±1 step for clock skew, wrong code fails", () => {
+  it("code verifies at the same instant, ±1 step for clock skew, wrong code fails", async () => {
     const secret = "JBSWY3DPEHPK3PXP"; // "Hello!" in base32
     const now = 1700000000000;
     const code = totpCode(secret, now);
@@ -31,113 +31,113 @@ describe("TOTP", () => {
 });
 
 describe("MFA setup / challenge / backup codes", () => {
-  it("setup is two-step: pending secret is not enforcement until confirmed", () => {
-    const u = user();
-    const { secret, otpauthUrl } = startMfaSetup(u.id);
+  it("setup is two-step: pending secret is not enforcement until confirmed", async () => {
+    const u = await user();
+    const { secret, otpauthUrl } = await startMfaSetup(u.id);
     expect(secret).toMatch(/^[A-Z2-7]+$/);
     expect(otpauthUrl).toContain("otpauth://totp/Ledger:");
-    expect(mfaStatus(u.id).enabled).toBe(false);
-    expect(() => confirmMfaSetup(u.id, "000000")).toThrow("Incorrect code");
-    expect(mfaStatus(u.id).enabled).toBe(false);
-    const { backupCodes } = confirmMfaSetup(u.id, totpCode(secret));
+    expect((await mfaStatus(u.id)).enabled).toBe(false);
+    await expect(confirmMfaSetup(u.id, "000000")).rejects.toThrow("Incorrect code");
+    expect((await mfaStatus(u.id)).enabled).toBe(false);
+    const { backupCodes } = await confirmMfaSetup(u.id, totpCode(secret));
     expect(backupCodes).toHaveLength(8);
-    expect(mfaStatus(u.id)).toEqual({ enabled: true, backupCodesRemaining: 8, pendingSetup: false });
+    expect(await mfaStatus(u.id)).toEqual({ enabled: true, backupCodesRemaining: 8, pendingSetup: false });
     // backup codes are stored hashed, never plaintext
-    expect(getStoredUserByEmail(u.email)!.backupCodes!.every((h) => !backupCodes.includes(h))).toBe(true);
+    expect((await getStoredUserByEmail(u.email))!.backupCodes!.every((h) => !backupCodes.includes(h))).toBe(true);
   });
-  it("challenge accepts a TOTP code, rejects a wrong one, and a backup code works once", () => {
-    const u = user();
-    const { secret } = startMfaSetup(u.id);
-    const { backupCodes } = confirmMfaSetup(u.id, totpCode(secret));
-    const ch = createMfaChallenge(u.id);
-    expect(verifyMfaChallenge(ch, "000000")).toBeNull();
-    expect(verifyMfaChallenge(ch, totpCode(secret))).toBe(u.id);
-    expect(verifyMfaChallenge(ch, totpCode(secret))).toBeNull(); // consumed
-    const ch2 = createMfaChallenge(u.id);
-    expect(verifyMfaChallenge(ch2, backupCodes[0])).toBe(u.id);
-    expect(mfaStatus(u.id).backupCodesRemaining).toBe(7);
-    expect(verifyMfaChallenge(createMfaChallenge(u.id), backupCodes[0])).toBeNull(); // spent
+  it("challenge accepts a TOTP code, rejects a wrong one, and a backup code works once", async () => {
+    const u = await user();
+    const { secret } = await startMfaSetup(u.id);
+    const { backupCodes } = await confirmMfaSetup(u.id, totpCode(secret));
+    const ch = await createMfaChallenge(u.id);
+    expect(await verifyMfaChallenge(ch, "000000")).toBeNull();
+    expect(await verifyMfaChallenge(ch, totpCode(secret))).toBe(u.id);
+    expect(await verifyMfaChallenge(ch, totpCode(secret))).toBeNull(); // consumed
+    const ch2 = await createMfaChallenge(u.id);
+    expect(await verifyMfaChallenge(ch2, backupCodes[0])).toBe(u.id);
+    expect((await mfaStatus(u.id)).backupCodesRemaining).toBe(7);
+    expect(await verifyMfaChallenge(await createMfaChallenge(u.id), backupCodes[0])).toBeNull(); // spent
   });
-  it("disabling MFA needs the password; a wrong password keeps MFA on", () => {
-    const u = user();
-    const { secret } = startMfaSetup(u.id);
-    confirmMfaSetup(u.id, totpCode(secret));
-    expect(() => disableMfa(u.id, "wrong-password-123")).toThrow("Incorrect password");
-    expect(mfaStatus(u.id).enabled).toBe(true);
-    disableMfa(u.id, PW);
-    expect(mfaStatus(u.id).enabled).toBe(false);
+  it("disabling MFA needs the password; a wrong password keeps MFA on", async () => {
+    const u = await user();
+    const { secret } = await startMfaSetup(u.id);
+    await confirmMfaSetup(u.id, totpCode(secret));
+    await expect(disableMfa(u.id, "wrong-password-123")).rejects.toThrow("Incorrect password");
+    expect((await mfaStatus(u.id)).enabled).toBe(true);
+    await disableMfa(u.id, PW);
+    expect((await mfaStatus(u.id)).enabled).toBe(false);
   });
 });
 
 describe("password reset", () => {
-  it("request returns a token for a real user and nothing usable for an unknown email", () => {
-    const u = user();
-    const { token } = requestPasswordReset(u.email);
+  it("request returns a token for a real user and nothing usable for an unknown email", async () => {
+    const u = await user();
+    const { token } = await requestPasswordReset(u.email);
     expect(token).toBeTruthy();
-    expect(requestPasswordReset("nobody@example.com").token).toBeNull();
-    confirmPasswordReset(token!, "a-brand-new-pass-2");
+    expect((await requestPasswordReset("nobody@example.com")).token).toBeNull();
+    await confirmPasswordReset(token!, "a-brand-new-pass-2");
     // token is single-use
-    expect(() => confirmPasswordReset(token!, "another-new-pass-3")).toThrow("invalid or has expired");
+    await expect(confirmPasswordReset(token!, "another-new-pass-3")).rejects.toThrow("invalid or has expired");
     // old password no longer works, new one does (via stored hash check)
-    const stored = getStoredUserByEmail(u.email)!;
+    const stored = (await getStoredUserByEmail(u.email))!;
     expect(verifyPassword("a-brand-new-pass-2", stored.passwordHash)).toBe(true);
     expect(verifyPassword(PW, stored.passwordHash)).toBe(false);
   });
-  it("reset revokes all sessions", () => {
-    const u = user();
-    const s = createSession(u.id);
-    expect(validateSession(s.token)?.id).toBe(u.id);
-    const { token } = requestPasswordReset(u.email);
-    confirmPasswordReset(token!, "a-brand-new-pass-2");
-    expect(validateSession(s.token)).toBeNull();
+  it("reset revokes all sessions", async () => {
+    const u = await user();
+    const s = await createSession(u.id);
+    expect((await validateSession(s.token))?.id).toBe(u.id);
+    const { token } = await requestPasswordReset(u.email);
+    await confirmPasswordReset(token!, "a-brand-new-pass-2");
+    expect(await validateSession(s.token)).toBeNull();
   });
-  it("a weak new password is rejected", () => {
-    const u = user();
-    const { token } = requestPasswordReset(u.email);
-    expect(() => confirmPasswordReset(token!, "short")).toThrow("at least 12 characters");
+  it("a weak new password is rejected", async () => {
+    const u = await user();
+    const { token } = await requestPasswordReset(u.email);
+    await expect(confirmPasswordReset(token!, "short")).rejects.toThrow("at least 12 characters");
   });
 });
 
 describe("API keys", () => {
-  it("create returns the key once; validate works; revoke stops it immediately", () => {
-    const u = user();
-    const { key, record } = createApiKey(u.id, "reporting script");
+  it("create returns the key once; validate works; revoke stops it immediately", async () => {
+    const u = await user();
+    const { key, record } = await createApiKey(u.id, "reporting script");
     expect(key.startsWith("lk_")).toBe(true);
     expect(record.prefix).toBe(key.slice(0, 12));
-    expect(validateApiKey(key)?.id).toBe(u.id);
-    expect(validateApiKey("lk_nope")).toBeNull();
-    expect(listApiKeys(u.id)).toHaveLength(1);
-    expect(listApiKeys(u.id)[0].prefix).toBe(record.prefix);
+    expect((await validateApiKey(key))?.id).toBe(u.id);
+    expect(await validateApiKey("lk_nope")).toBeNull();
+    expect(await listApiKeys(u.id)).toHaveLength(1);
+    expect((await listApiKeys(u.id))[0].prefix).toBe(record.prefix);
     // the full key is never stored / listed
-    expect(JSON.stringify(listApiKeys(u.id))).not.toContain(key);
-    revokeApiKey(u.id, record.id);
-    expect(validateApiKey(key)).toBeNull();
-    expect(() => revokeApiKey(u.id, record.id)).toThrow("already revoked");
+    expect(JSON.stringify(await listApiKeys(u.id))).not.toContain(key);
+    await revokeApiKey(u.id, record.id);
+    expect(await validateApiKey(key)).toBeNull();
+    await expect(revokeApiKey(u.id, record.id)).rejects.toThrow("already revoked");
   });
 });
 
 describe("sessions + audit log", () => {
-  it("sessions list, revoke one, revoke others", () => {
-    const u = user();
-    const s1 = createSession(u.id, { userAgent: "TestAgent/1", ip: "1.2.3.4" });
-    const s2 = createSession(u.id, { userAgent: "Other/2" });
-    const listed = listUserSessions(u.id, s1.token);
+  it("sessions list, revoke one, revoke others", async () => {
+    const u = await user();
+    const s1 = await createSession(u.id, { userAgent: "TestAgent/1", ip: "1.2.3.4" });
+    const s2 = await createSession(u.id, { userAgent: "Other/2" });
+    const listed = await listUserSessions(u.id, s1.token);
     expect(listed).toHaveLength(2);
     expect(listed.find((s) => s.current)).toBeTruthy();
-    expect(revokeUserSession(u.id, s2.token)).toBe(true);
-    expect(validateSession(s2.token)).toBeNull();
-    expect(validateSession(s1.token)?.id).toBe(u.id);
-    expect(revokeOtherSessions(u.id, s1.token)).toBe(0);
-    const s3 = createSession(u.id);
-    expect(revokeOtherSessions(u.id, s1.token)).toBe(1);
-    expect(validateSession(s3.token)).toBeNull();
-    expect(validateSession(s1.token)?.id).toBe(u.id);
+    expect(await revokeUserSession(u.id, s2.token)).toBe(true);
+    expect(await validateSession(s2.token)).toBeNull();
+    expect((await validateSession(s1.token))?.id).toBe(u.id);
+    expect(await revokeOtherSessions(u.id, s1.token)).toBe(0);
+    const s3 = await createSession(u.id);
+    expect(await revokeOtherSessions(u.id, s1.token)).toBe(1);
+    expect(await validateSession(s3.token)).toBeNull();
+    expect((await validateSession(s1.token))?.id).toBe(u.id);
   });
-  it("auth events are recorded newest-first", () => {
-    const u = user();
-    const { secret } = startMfaSetup(u.id);
-    confirmMfaSetup(u.id, totpCode(secret));
-    const events = listAuthEvents();
+  it("auth events are recorded newest-first", async () => {
+    const u = await user();
+    const { secret } = await startMfaSetup(u.id);
+    await confirmMfaSetup(u.id, totpCode(secret));
+    const events = await listAuthEvents();
     expect(events[0].event).toBe("mfa_enabled");
     expect(events.some((e) => e.event === "user_registered")).toBe(true);
   });

@@ -10,7 +10,7 @@ import { metaFor } from "../../../../lib/query";
 // the generic "Invalid email or password" for the same reason.
 export async function GET() {
   return NextResponse.json({
-    data: { hasUsers: listUsers().length > 0, demoAuthEnabled: demoAuthEnabled() },
+    data: { hasUsers: (await listUsers()).length > 0, demoAuthEnabled: demoAuthEnabled() },
     totals: { cost: 0, usage: 0, rows: 1 },
     meta: metaFor(),
   });

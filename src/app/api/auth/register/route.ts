@@ -12,8 +12,8 @@ export async function POST(req: NextRequest) {
   }
   try {
     const body = await req.json().catch(() => ({}));
-    const user = registerUser(String(body.email || ""), String(body.name || ""), String(body.password || ""));
-    const session = createSession(user.id, { userAgent: req.headers.get("user-agent") || undefined, ip: clientIp(req) });
+    const user = await registerUser(String(body.email || ""), String(body.name || ""), String(body.password || ""));
+    const session = await createSession(user.id, { userAgent: req.headers.get("user-agent") || undefined, ip: clientIp(req) });
     const res = NextResponse.json({ data: user, totals: { cost: 0, usage: 0, rows: 1 }, meta: metaFor() }, { status: 201 });
     res.headers.set("Set-Cookie", sessionCookieHeader(session.token, process.env.NODE_ENV === "production"));
     return res;

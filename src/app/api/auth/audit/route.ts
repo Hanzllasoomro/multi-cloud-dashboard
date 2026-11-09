@@ -8,8 +8,8 @@ import { metaFor } from "../../../../lib/query";
 // Auditor only (viewAudit). Events: logins, MFA, resets, API keys,
 // sessions, role changes, registrations.
 export async function GET(req: NextRequest) {
-  const auth = requirePermission(req, "viewAudit");
+  const auth = await requirePermission(req, "viewAudit");
   if (auth.response) return auth.response;
-  const data = listAuthEvents(200);
+  const data = await listAuthEvents(200);
   return NextResponse.json({ data, totals: { cost: 0, usage: 0, rows: data.length }, meta: metaFor() });
 }

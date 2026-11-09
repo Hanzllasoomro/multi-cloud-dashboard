@@ -1,10 +1,16 @@
-// Ledger — connected-accounts store (v1.2).
+// Ledger — connected-accounts store (v1.7).
 //
-// IN-MEMORY STORE — READ THIS BEFORE PRODUCTION USE: this module keeps
-// accounts and audit entries in a module-level variable in the server
-// process. It resets on server restart and does not survive a multi-instance
-// deployment. A real database replaces exactly this one module later; the
-// API shapes, the account model, and the audit format do not change.
+// Two backends, one interface (functions async since v1.7):
+//  - Postgres (src/lib/accounts-pg.ts) when DATABASE_URL is set and we are
+//    not under Vitest — the Vercel deployment path. Shared across
+//    serverless instances, so managed accounts survive cold starts.
+//  - In-memory store otherwise — local dev and tests, seeded with the
+//    three demo accounts. This also closes the 2026-10-27 proposal to
+//    persist accounts to .ledger-data/accounts.json: a database subsumes it.
+// NEVER store a credential here: live credentials stay in server environment
+// variables only (see docs/REAL_ACCOUNTS.md) and are never returned by any
+// API, never logged, and never appear in this store. Account records carry
+// identifiers and scopes only.
 // NEVER store a credential here: live credentials stay in server environment
 // variables only (see docs/REAL_ACCOUNTS.md) and are never returned by any
 // API, never logged, and never appear in this store. Account records carry
@@ -19,6 +25,8 @@
 // provider (it is the sole account for that provider by construction).
 import type { CostRow, Provider } from "./types";
 import { CONNECTORS, getDataSource } from "./providers/source";
+import { isPostgresEnabled } from "./db";
+import * as pg from "./accounts-pg";
 
 export type AccountStatus = "Pending" | "Validating" | "Healthy" | "Degraded" | "Broken" | "Paused";
 export type AccountMode = "demo" | "live";
@@ -80,20 +88,47 @@ let audit: AuditEntry[] = seedAccounts().map((a) => ({
 let auditCounter = 0;
 
 /** Test-only reset: restores the seeded store. Never called by API routes. */
-export function resetAccountStore(): void {
+export async function resetAccountStore(): Promise<void> {
+  if (isPostgresEnabled()) { await pg.pgResetAccountStore(); accounts = seedAccounts(); audit = seedAudit(); auditCounter = 0; return; }
   accounts = seedAccounts();
-  audit = seedAccounts().map((a) => ({
+  audit = seedAudit();
+  auditCounter = 0;
+}
+function seedAudit(): AuditEntry[] {
+  return seedAccounts().map((a) => ({
     id: `audit-seed-${a.id}`, when: a.createdAt, who: "system (seed)",
     what: `Account seeded (demo): ${a.displayName} (${a.provider})`, accountId: a.id,
   }));
-  auditCounter = 0;
 }
-function log(what: string, accountId?: string): void {
-  audit.unshift({ id: `audit-${++auditCounter}-${Date.now().toString(36)}`, when: stamp(), who: ACTOR, what, accountId });
+async function log(what: string, accountId?: string): Promise<void> {
+  const entry: AuditEntry = { id: `audit-${++auditCounter}-${Date.now().toString(36)}`, when: stamp(), who: ACTOR, what, accountId };
+  if (isPostgresEnabled()) { await pg.pgLogAccountAudit(entry); return; }
+  audit.unshift(entry);
 }
-export function listAccounts(): ManagedAccount[] { return accounts.map((a) => ({ ...a, scope: { ...a.scope, providers: [...a.scope.providers], accounts: [...a.scope.accounts], tags: [...a.scope.tags], teams: [...a.scope.teams] } })); }
-export function getAccount(id: string): ManagedAccount | undefined { return accounts.find((a) => a.id === id); }
-export function listAudit(): AuditEntry[] { return [...audit]; }
+function cloneAccount(a: ManagedAccount): ManagedAccount {
+  return { ...a, scope: { ...a.scope, providers: [...a.scope.providers], accounts: [...a.scope.accounts], tags: [...a.scope.tags], teams: [...a.scope.teams] } };
+}
+async function ensureSeeded(): Promise<void> {
+  if (isPostgresEnabled()) await pg.pgSeedIfEmpty(seedAccounts(), seedAudit());
+}
+export async function listAccounts(): Promise<ManagedAccount[]> {
+  if (isPostgresEnabled()) { await ensureSeeded(); const rows = await pg.pgListAccounts(); accounts = rows; return rows.map(cloneAccount); }
+  return accounts.map(cloneAccount);
+}
+export async function getAccount(id: string): Promise<ManagedAccount | undefined> {
+  if (isPostgresEnabled()) { await ensureSeeded(); const a = await pg.pgGetAccount(id); return a ? cloneAccount(a) : undefined; }
+  const a = accounts.find((x) => x.id === id);
+  return a ? cloneAccount(a) : undefined;
+}
+export async function listAudit(): Promise<AuditEntry[]> {
+  if (isPostgresEnabled()) { await ensureSeeded(); return pg.pgListAccountAudit(); }
+  return [...audit];
+}
+async function saveAccount(a: ManagedAccount): Promise<void> {
+  if (isPostgresEnabled()) { await pg.pgUpsertAccount(a); return; }
+  const i = accounts.findIndex((x) => x.id === a.id);
+  if (i >= 0) accounts[i] = a; else accounts.push(a);
+}
 
 function cleanScope(input: Partial<AccountScope> | undefined, provider: Provider): AccountScope {
   const arr = (v: unknown): string[] => (Array.isArray(v) ? v : []).map(String).map((s) => s.trim()).filter(Boolean);
@@ -103,7 +138,7 @@ function cleanScope(input: Partial<AccountScope> | undefined, provider: Provider
   };
 }
 export interface CreateAccountInput { provider: Provider; displayName: string; accountId: string; billingAccount: string; scope?: Partial<AccountScope> }
-export function createAccount(input: CreateAccountInput): ManagedAccount {
+export async function createAccount(input: CreateAccountInput): Promise<ManagedAccount> {
   if (!PROVIDERS.includes(input.provider)) throw new Error("provider must be AWS, Azure, or GCP");
   if (!input.displayName?.trim()) throw new Error("displayName is required");
   if (!input.accountId?.trim()) throw new Error("accountId is required (AWS account / Azure subscription / GCP project)");
@@ -115,13 +150,13 @@ export function createAccount(input: CreateAccountInput): ManagedAccount {
     scope: cleanScope(input.scope, input.provider), status: "Pending", lastSync: "—", nextSync: "—",
     mode: getDataSource(), createdBy: ACTOR, createdAt: now,
   };
-  accounts.push(acc);
-  log(`Account added: ${acc.displayName} (${acc.provider})`, acc.id);
+  await saveAccount(acc);
+  await log(`Account added: ${acc.displayName} (${acc.provider})`, acc.id);
   return { ...acc, scope: { ...acc.scope } };
 }
 export interface UpdateAccountInput { displayName?: string; scope?: Partial<AccountScope>; status?: "Paused" | "Healthy" }
-export function updateAccount(id: string, patch: UpdateAccountInput): ManagedAccount {
-  const acc = getAccount(id);
+export async function updateAccount(id: string, patch: UpdateAccountInput): Promise<ManagedAccount> {
+  const acc = await getAccount(id);
   if (!acc) throw new Error("Account not found");
   if (patch.displayName !== undefined) {
     if (!patch.displayName.trim()) throw new Error("displayName is required");
@@ -129,29 +164,31 @@ export function updateAccount(id: string, patch: UpdateAccountInput): ManagedAcc
   }
   if (patch.scope !== undefined) acc.scope = cleanScope(patch.scope, acc.provider);
   if (patch.status === "Paused") {
-    if (acc.status !== "Paused") { acc.previousStatus = acc.status; acc.status = "Paused"; log(`Account paused: ${acc.displayName} (${acc.provider}) — excluded from query totals`, acc.id); }
+    if (acc.status !== "Paused") { acc.previousStatus = acc.status; acc.status = "Paused"; await log(`Account paused: ${acc.displayName} (${acc.provider}) — excluded from query totals`, acc.id); }
   } else if (patch.status === "Healthy") {
     if (acc.status === "Paused") {
       const restored = acc.previousStatus && acc.previousStatus !== "Paused" ? acc.previousStatus : "Healthy";
       acc.status = restored; delete acc.previousStatus;
-      log(`Account resumed: ${acc.displayName} (${acc.provider}) — restored to ${restored}`, acc.id);
+      await log(`Account resumed: ${acc.displayName} (${acc.provider}) — restored to ${restored}`, acc.id);
     }
   } else if (patch.status !== undefined) {
     throw new Error("status may only be set to Paused or Healthy via this endpoint (test sets Healthy/Degraded/Broken)");
   }
-  if (patch.displayName !== undefined || patch.scope !== undefined) log(`Account edited: ${acc.displayName} (${acc.provider})`, acc.id);
+  if (patch.displayName !== undefined || patch.scope !== undefined) await log(`Account edited: ${acc.displayName} (${acc.provider})`, acc.id);
+  await saveAccount(acc);
   return { ...acc, scope: { ...acc.scope } };
 }
-export function removeAccount(id: string, confirm: string, dataChoice: "keep" | "purge"): ManagedAccount {
-  const acc = getAccount(id);
+export async function removeAccount(id: string, confirm: string, dataChoice: "keep" | "purge"): Promise<ManagedAccount> {
+  const acc = await getAccount(id);
   if (!acc) throw new Error("Account not found");
   if (confirm !== acc.displayName) throw new Error("Delete confirmation does not match the account display name — type the display name exactly to confirm removal.");
   if (dataChoice !== "keep" && dataChoice !== "purge") throw new Error("dataChoice must be keep or purge");
-  accounts = accounts.filter((a) => a.id !== id);
+  if (isPostgresEnabled()) await pg.pgDeleteAccount(id);
+  else accounts = accounts.filter((a) => a.id !== id);
   const note = dataChoice === "keep"
     ? "Historical cost data kept (visible in past periods, no new ingestion)."
     : "Data purge requested. NOTE: in this version demo rows are a shared synthetic dataset, so purge is recorded in the audit log but does not delete other accounts' demo rows; in production a purge job deletes this account's rows.";
-  log(`Account removed: ${acc.displayName} (${acc.provider}) — data: ${dataChoice}. ${note}`, acc.id);
+  await log(`Account removed: ${acc.displayName} (${acc.provider}) — data: ${dataChoice}. ${note}`, acc.id);
   return acc;
 }
 
@@ -159,8 +196,8 @@ export function removeAccount(id: string, confirm: string, dataChoice: "keep" | 
  *  never a live provider call and never a credential value. Demo = simulated
  *  checklist, labelled as such by the caller; the seeded Azure account keeps
  *  one failing item so its Degraded story stays visible. */
-export function runTestChecklist(id: string): ChecklistResult {
-  const acc = getAccount(id);
+export async function runTestChecklist(id: string): Promise<ChecklistResult> {
+  const acc = await getAccount(id);
   if (!acc) throw new Error("Account not found");
   const mode = getDataSource();
   acc.status = "Validating";
@@ -182,14 +219,15 @@ export function runTestChecklist(id: string): ChecklistResult {
   const passed = checklist.filter((c) => c.status === "pass").length;
   acc.status = passed === checklist.length ? "Healthy" : passed === 0 ? "Broken" : "Degraded";
   acc.lastSync = stamp();
-  log(`Connection tested: ${acc.displayName} (${acc.provider}) — ${passed}/${checklist.length} checks passed, status ${acc.status} (${mode} mode)`, acc.id);
+  await saveAccount(acc);
+  await log(`Connection tested: ${acc.displayName} (${acc.provider}) — ${passed}/${checklist.length} checks passed, status ${acc.status} (${mode} mode)`, acc.id);
   return { account: { ...acc, scope: { ...acc.scope } }, checklist, passed, total: checklist.length, mode };
 }
 
 /** Paused accounts are excluded from query totals. Matching: scope.accounts
  *  against row subAccount/subAccountId, the account's own identifier against
  *  subAccountId, or — when scope.accounts is empty — the whole provider. */
-export function excludePausedRows(rows: CostRow[], all: ManagedAccount[] = listAccounts()): CostRow[] {
+export function excludePausedRows(rows: CostRow[], all: ManagedAccount[] = accounts): CostRow[] {
   const paused = all.filter((a) => a.status === "Paused");
   if (!paused.length) return rows;
   return rows.filter((r) => !paused.some((a) =>
@@ -197,7 +235,7 @@ export function excludePausedRows(rows: CostRow[], all: ManagedAccount[] = listA
     a.accountId === r.subAccountId || (a.scope.accounts.length === 0 && a.provider === r.provider)));
 }
 /** Expand managed account ids to the sub-account names they cover. */
-export function expandAccountIds(ids: string[], all: ManagedAccount[] = listAccounts()): string[] {
+export function expandAccountIds(ids: string[], all: ManagedAccount[] = accounts): string[] {
   const out: string[] = [];
   ids.forEach((id) => {
     const a = all.find((x) => x.id === id);

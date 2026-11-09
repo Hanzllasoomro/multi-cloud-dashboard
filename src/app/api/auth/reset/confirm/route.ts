@@ -13,7 +13,7 @@ export async function POST(req: NextRequest) {
   }
   const body = await req.json().catch(() => ({}));
   try {
-    confirmPasswordReset(String(body.token || ""), String(body.newPassword || ""), clientIp(req));
+    await confirmPasswordReset(String(body.token || ""), String(body.newPassword || ""), clientIp(req));
     return NextResponse.json({ data: { reset: true }, totals: { cost: 0, usage: 0, rows: 1 }, meta: metaFor() });
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : "Password reset failed." }, { status: 400 });

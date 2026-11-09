@@ -33,68 +33,68 @@ export function validateEmail(email: string): string | null {
   return null;
 }
 
-export function registerUser(email: string, name: string, password: string): PublicUser {
+export async function registerUser(email: string, name: string, password: string): Promise<PublicUser> {
   const emailErr = validateEmail(email);
   if (emailErr) throw new Error(emailErr);
   const pwErr = validatePassword(password);
   if (pwErr) throw new Error(pwErr);
   const norm = email.trim().toLowerCase();
-  if (getStoredUserByEmail(norm)) throw new Error("An account with that email already exists.");
+  if (await getStoredUserByEmail(norm)) throw new Error("An account with that email already exists.");
   // First registered user becomes Owner; every later registration defaults
   // to Viewer and is visible in Settings > Team members for an Owner/Admin
   // to promote. This is the bootstrap rule — there is no seeded admin.
-  const role: Role = listUsers().length === 0 ? "Owner" : "Viewer";
+  const role: Role = (await listUsers()).length === 0 ? "Owner" : "Viewer";
   const user: StoredUser = {
-    id: nextUserId(),
+    id: await nextUserId(),
     email: norm, name: name.trim() || norm.split("@")[0], role,
     passwordHash: hashPassword(password),
     createdAt: new Date().toISOString().slice(0, 16).replace("T", " ") + " UTC",
   };
-  addUser(user);
-  logAuthEvent("user_registered", { userId: user.id, email: user.email, detail: `Role: ${role}.` });
+  await addUser(user);
+  await logAuthEvent("user_registered", { userId: user.id, email: user.email, detail: `Role: ${role}.` });
   return publicUser(user);
 }
 
 export interface SessionMeta { userAgent?: string; ip?: string }
-export function createSession(userId: string, meta: SessionMeta = {}): Session {
+export async function createSession(userId: string, meta: SessionMeta = {}): Promise<Session> {
   const now = Date.now();
   const s: Session = { token: randomBytes(32).toString("hex"), userId, createdAt: now, expiresAt: now + SESSION_TTL_MS, lastSeen: now, userAgent: meta.userAgent, ip: meta.ip };
-  addSession(s);
+  await addSession(s);
   return s;
 }
 /** Returns the session's user, or null if the token is missing/expired/unknown. Expired sessions are deleted. */
-export function validateSession(token: string | undefined | null): PublicUser | null {
+export async function validateSession(token: string | undefined | null): Promise<PublicUser | null> {
   if (!token) return null;
-  const s = getSession(token);
+  const s = await getSession(token);
   if (!s) return null;
-  if (Date.now() > s.expiresAt) { deleteSession(token); return null; }
-  touchSession(s);
-  const u = getUserById(s.userId);
+  if (Date.now() > s.expiresAt) { await deleteSession(token); return null; }
+  await touchSession(s);
+  const u = await getUserById(s.userId);
   return u ? publicUser(u) : null;
 }
-export function destroySession(token: string | undefined | null): void {
+export async function destroySession(token: string | undefined | null): Promise<void> {
   if (!token) return;
-  deleteSession(token);
+  await deleteSession(token);
 }
 
-export function listUserSessions(userId: string, currentToken?: string): PublicSession[] {
-  return listSessionsForUser(userId).map((s) => ({
+export async function listUserSessions(userId: string, currentToken?: string): Promise<PublicSession[]> {
+  return (await listSessionsForUser(userId)).map((s) => ({
     tokenPrefix: s.token.slice(0, 8), createdAt: s.createdAt, expiresAt: s.expiresAt, lastSeen: s.lastSeen,
     userAgent: s.userAgent, ip: s.ip, current: !!currentToken && s.token === currentToken,
   }));
 }
 /** Revoke one session by its full token. Returns false when the token
  *  does not belong to this user. */
-export function revokeUserSession(userId: string, token: string): boolean {
-  const s = getSession(token);
+export async function revokeUserSession(userId: string, token: string): Promise<boolean> {
+  const s = await getSession(token);
   if (!s || s.userId !== userId) return false;
-  deleteSession(token);
-  logAuthEvent("session_revoked", { userId, detail: "One session revoked." });
+  await deleteSession(token);
+  await logAuthEvent("session_revoked", { userId, detail: "One session revoked." });
   return true;
 }
-export function revokeOtherSessions(userId: string, currentToken?: string): number {
-  const n = deleteSessionsForUser(userId, currentToken);
-  if (n) logAuthEvent("session_revoked", { userId, detail: `${n} other session(s) revoked.` });
+export async function revokeOtherSessions(userId: string, currentToken?: string): Promise<number> {
+  const n = await deleteSessionsForUser(userId, currentToken);
+  if (n) await logAuthEvent("session_revoked", { userId, detail: `${n} other session(s) revoked.` });
   return n;
 }
 
@@ -103,15 +103,15 @@ export function revokeOtherSessions(userId: string, currentToken?: string): numb
 export function demoAuthEnabled(): boolean {
   return process.env.LEDGER_DEMO_AUTH === "true";
 }
-export function getOrCreateDemoUser(): PublicUser {
-  let demo = getStoredUserByEmail("demo@ledger.demo");
+export async function getOrCreateDemoUser(): Promise<PublicUser> {
+  let demo = await getStoredUserByEmail("demo@ledger.demo");
   if (!demo) {
     const user: StoredUser = {
       id: "user-demo", email: "demo@ledger.demo", name: "Demo judge", role: "Viewer",
       passwordHash: hashPassword(randomBytes(32).toString("hex")),
       createdAt: new Date().toISOString().slice(0, 16).replace("T", " ") + " UTC",
     };
-    addUser(user);
+    await addUser(user);
     demo = user;
   }
   return publicUser(demo);
@@ -157,22 +157,22 @@ export function clearSessionCookieHeader(isProduction: boolean): string {
 }
 
 /** Change a user's role. Throws on unknown user or on demoting the last Owner. */
-export function changeUserRole(id: string, role: Role, actorId?: string): PublicUser {
-  const u = getUserById(id);
+export async function changeUserRole(id: string, role: Role, actorId?: string): Promise<PublicUser> {
+  const u = await getUserById(id);
   if (!u) throw new Error("User not found");
-  if (u.role === "Owner" && role !== "Owner" && countOwners() <= 1) {
+  if (u.role === "Owner" && role !== "Owner" && (await countOwners()) <= 1) {
     throw new Error("Cannot demote the last Owner — promote another user to Owner first.");
   }
   const before = u.role;
-  updateUser(id, { role });
-  logAuthEvent("role_changed", { userId: id, email: u.email, detail: `${before} → ${role}.` });
+  await updateUser(id, { role });
+  await logAuthEvent("role_changed", { userId: id, email: u.email, detail: `${before} → ${role}.` });
   return publicUser({ ...u, role });
 }
 
 /** Set a new password for a user (used by reset + admin flows). Revokes all sessions. */
-export function setUserPassword(userId: string, newPassword: string): void {
+export async function setUserPassword(userId: string, newPassword: string): Promise<void> {
   const pwErr = validatePassword(newPassword);
   if (pwErr) throw new Error(pwErr);
-  updateUser(userId, { passwordHash: hashPassword(newPassword) });
-  deleteSessionsForUser(userId);
+  await updateUser(userId, { passwordHash: hashPassword(newPassword) });
+  await deleteSessionsForUser(userId);
 }

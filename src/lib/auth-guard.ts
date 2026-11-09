@@ -1,11 +1,11 @@
-// Ledger — server-side auth guard for API routes (v1.6).
+// Ledger — server-side auth guard for API routes (v1.7).
 //
 // Middleware (src/middleware.ts) only checks that a session cookie is
 // PRESENT — it runs on the edge and cannot validate the token. These
 // helpers are the authoritative check: they validate the session against
 // the server store (or an API key) and enforce the role permission.
 // Every protected API route must call one of them; UI hiding alone is
-// never enforcement.
+// never enforcement. Async since v1.7: the store may be Postgres.
 //
 // Authentication, in order: (1) httpOnly session cookie, (2) API key
 // via `Authorization: Bearer lk_...` or `X-Ledger-Api-Key`. An API key
@@ -29,27 +29,27 @@ function forbidden(permission: Permission): NextResponse {
   );
 }
 
-export function sessionUserFromRequest(req: NextRequest): PublicUser | null {
+export async function sessionUserFromRequest(req: NextRequest): Promise<PublicUser | null> {
   return validateSession(req.cookies.get(SESSION_COOKIE)?.value);
 }
 
-export function authFromRequest(req: NextRequest): { user: PublicUser | null; via: "session" | "api-key" | null } {
-  const sessionUser = sessionUserFromRequest(req);
+export async function authFromRequest(req: NextRequest): Promise<{ user: PublicUser | null; via: "session" | "api-key" | null }> {
+  const sessionUser = await sessionUserFromRequest(req);
   if (sessionUser) return { user: sessionUser, via: "session" };
   const authHeader = req.headers.get("authorization") || "";
   const bearer = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
-  const keyUser = validateApiKey(bearer || req.headers.get("x-ledger-api-key"));
+  const keyUser = await validateApiKey(bearer || req.headers.get("x-ledger-api-key"));
   if (keyUser) return { user: keyUser, via: "api-key" };
   return { user: null, via: null };
 }
 
-export function requireUser(req: NextRequest): AuthResult {
-  const { user, via } = authFromRequest(req);
+export async function requireUser(req: NextRequest): Promise<AuthResult> {
+  const { user, via } = await authFromRequest(req);
   return user && via ? { user, via, response: null } : { user: null, via: null, response: unauthenticated() };
 }
 
-export function requirePermission(req: NextRequest, permission: Permission): AuthResult {
-  const auth = requireUser(req);
+export async function requirePermission(req: NextRequest, permission: Permission): Promise<AuthResult> {
+  const auth = await requireUser(req);
   if (auth.response) return auth;
   if (!can(auth.user!.role, permission)) return { user: null, via: null, response: forbidden(permission) };
   return auth;

@@ -1,6 +1,6 @@
 {
   "name": "ledger-multi-cloud-cost-platform",
-  "version": "1.6.0",
+  "version": "1.7.0",
   "private": true,
   "license": "MIT",
   "scripts": {
@@ -8,16 +8,19 @@
     "build": "next build",
     "start": "next start",
     "test": "vitest run",
+    "migrate:pg": "node scripts/migrate-to-postgres.mjs",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@aws-sdk/client-cost-explorer": "^3.1157.0",
     "next": "14.2.18",
+    "pg": "^8.23.1",
     "react": "18.3.1",
     "react-dom": "18.3.1"
   },
   "devDependencies": {
     "@types/node": "20.14.12",
+    "@types/pg": "^8.23.1",
     "@types/react": "18.3.3",
     "@types/react-dom": "18.3.0",
     "typescript": "5.5.4",

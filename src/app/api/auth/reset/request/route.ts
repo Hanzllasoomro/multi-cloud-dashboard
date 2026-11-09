@@ -15,7 +15,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Origin check failed." }, { status: 403 });
   }
   const body = await req.json().catch(() => ({}));
-  const { token, expiresAt } = requestPasswordReset(String(body.email || ""), clientIp(req));
+  const { token, expiresAt } = await requestPasswordReset(String(body.email || ""), clientIp(req));
   const data: Record<string, unknown> = { requested: true, expiresAt: new Date(expiresAt).toISOString() };
   if (token && process.env.NODE_ENV !== "production") data.resetToken = token;
   return NextResponse.json({ data, totals: { cost: 0, usage: 0, rows: 1 }, meta: metaFor() });

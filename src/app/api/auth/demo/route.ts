@@ -11,9 +11,9 @@ export async function POST(_req: NextRequest) {
   if (!demoAuthEnabled()) {
     return NextResponse.json({ error: "Demo sign-in is disabled. Set LEDGER_DEMO_AUTH=true to enable it for a demo, and keep it off for real deployments." }, { status: 403 });
   }
-  const user = getOrCreateDemoUser();
-  const session = createSession(user.id, { userAgent: _req.headers.get("user-agent") || undefined, ip: clientIp(_req) });
-  logAuthEvent("login_success", { userId: user.id, email: user.email, detail: "Demo sign-in.", ip: clientIp(_req) });
+  const user = await getOrCreateDemoUser();
+  const session = await createSession(user.id, { userAgent: _req.headers.get("user-agent") || undefined, ip: clientIp(_req) });
+  await logAuthEvent("login_success", { userId: user.id, email: user.email, detail: "Demo sign-in.", ip: clientIp(_req) });
   const res = NextResponse.json({ data: user, totals: { cost: 0, usage: 0, rows: 1 }, meta: metaFor() });
   res.headers.set("Set-Cookie", sessionCookieHeader(session.token, process.env.NODE_ENV === "production"));
   return res;

@@ -1,4 +1,4 @@
-# Ledger — Security (v1.6)
+# Ledger — Security (v1.7)
 
 ## Threat model
 
@@ -64,6 +64,17 @@ register once more.
 
 ## What is still production-only work (NOT faked)
 
+- **Postgres store (v1.7)** — when `DATABASE_URL` is set (Vercel Postgres),
+  users, sessions, API keys, reset tokens, MFA challenges, the auth audit
+  log and managed accounts live in Postgres (`src/lib/db.ts` schema,
+  `src/lib/auth/store-pg.ts`, `src/lib/accounts-pg.ts`), shared across
+  serverless instances. Without `DATABASE_URL` the file/in-memory stores
+  are used, exactly as before. All store functions are async since v1.7;
+  routes, guards and permissions did not change shape. Migration from a
+  local file: `npm run migrate:pg` (one-time, idempotent, keeps the file
+  as a backup; scrypt hashes migrate as-is). **Not yet verified against a
+  live database** — the Postgres SQL is covered by fake-pool tests, and
+  the live check needs a real `DATABASE_URL` (see docs/VERCEL_DB_PROPOSAL.md).
 - **Real database** for users and sessions (now file-backed for local
   dev/single-server use — see above) and for accounts (still in-memory
   and reset on server restart). A DB replaces one module each; API shapes

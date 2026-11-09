@@ -14,8 +14,8 @@ export function publicApiKey(k: ApiKeyRecord): PublicApiKey {
   return { id: k.id, name: k.name, prefix: k.prefix, createdAt: k.createdAt, lastUsedAt: k.lastUsedAt, revokedAt: k.revokedAt };
 }
 
-export function createApiKey(userId: string, name: string): { record: PublicApiKey; key: string } {
-  const u = getUserById(userId);
+export async function createApiKey(userId: string, name: string): Promise<{ record: PublicApiKey; key: string }> {
+  const u = await getUserById(userId);
   if (!u) throw new Error("User not found");
   const clean = name.trim();
   if (!clean) throw new Error("Give the API key a name.");
@@ -28,37 +28,37 @@ export function createApiKey(userId: string, name: string): { record: PublicApiK
     keyHash: createHash("sha256").update(key).digest("hex"),
     createdAt: new Date().toISOString().slice(0, 16).replace("T", " ") + " UTC",
   };
-  addApiKey(record);
-  logAuthEvent("api_key_created", { userId, email: u.email, detail: `${clean} (${record.prefix}…).` });
+  await addApiKey(record);
+  await logAuthEvent("api_key_created", { userId, email: u.email, detail: `${clean} (${record.prefix}…).` });
   return { record: publicApiKey(record), key };
 }
 
-export function listApiKeys(userId: string): PublicApiKey[] {
-  return listApiKeysForUser(userId).map(publicApiKey);
+export async function listApiKeys(userId: string): Promise<PublicApiKey[]> {
+  return (await listApiKeysForUser(userId)).map(publicApiKey);
 }
 
-export function revokeApiKey(userId: string, id: string): PublicApiKey {
-  const k = listApiKeysForUser(userId).find((x) => x.id === id);
+export async function revokeApiKey(userId: string, id: string): Promise<PublicApiKey> {
+  const k = (await listApiKeysForUser(userId)).find((x) => x.id === id);
   if (!k) throw new Error("API key not found");
   if (k.revokedAt) throw new Error("API key is already revoked.");
-  const updated = updateApiKey(id, { revokedAt: new Date().toISOString() })!;
-  const u = getUserById(userId);
-  logAuthEvent("api_key_revoked", { userId, email: u?.email, detail: `${k.name} (${k.prefix}…).` });
+  const updated = (await updateApiKey(id, { revokedAt: new Date().toISOString() }))!;
+  const u = await getUserById(userId);
+  await logAuthEvent("api_key_revoked", { userId, email: u?.email, detail: `${k.name} (${k.prefix}…).` });
   return publicApiKey(updated);
 }
 
 /** Validate a raw key (Bearer token or X-Ledger-Api-Key header). Returns
  *  the owning public user, or null. Updates lastUsedAt at most hourly. */
-export function validateApiKey(raw: string | undefined | null): PublicUser | null {
+export async function validateApiKey(raw: string | undefined | null): Promise<PublicUser | null> {
   if (!raw || !raw.startsWith(API_KEY_PREFIX)) return null;
   const hash = createHash("sha256").update(raw.trim()).digest("hex");
-  const rec = findApiKeyByHash(hash);
+  const rec = await findApiKeyByHash(hash);
   if (!rec) return null;
-  const user = getUserById(rec.userId);
+  const user = await getUserById(rec.userId);
   if (!user) return null;
   const last = rec.lastUsedAt ? Date.parse(rec.lastUsedAt) : 0;
   if (Date.now() - last > 60 * 60 * 1000) {
-    updateApiKey(rec.id, { lastUsedAt: new Date().toISOString() });
+    await updateApiKey(rec.id, { lastUsedAt: new Date().toISOString() });
   }
   return publicUser(user);
 }

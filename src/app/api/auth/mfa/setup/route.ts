@@ -9,10 +9,10 @@ import { metaFor } from "../../../../../lib/query";
 // and is never returned again. Enter the secret manually in your
 // authenticator app (or open the otpauth URL).
 export async function POST(req: NextRequest) {
-  const auth = requireUser(req);
+  const auth = await requireUser(req);
   if (auth.response) return auth.response;
   try {
-    const data = startMfaSetup(auth.user!.id);
+    const data = await startMfaSetup(auth.user!.id);
     return NextResponse.json({ data, totals: { cost: 0, usage: 0, rows: 1 }, meta: metaFor() });
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : "MFA setup failed." }, { status: 400 });
