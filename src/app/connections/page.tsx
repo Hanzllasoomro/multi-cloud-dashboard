@@ -1,6 +1,5 @@
 "use client";
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { CONNECTIONS } from "../../lib/data";
 import ConnectionCard from "../../components/ConnectionCard";
 
@@ -25,14 +24,12 @@ export default function Connections() {
   return (
     <div>
       <h1>Connections</h1>
-      <p className="muted">Read-only connections. Every permission is shown with its reason; Test connection checks each permission individually and names the exact fix for any missing one. To add, edit, pause, test or remove accounts day to day, go to <Link href="/settings">Settings › Connected accounts</Link> — this page is the onboarding wizard (IaC + permission reasons).</p>
       {live?.source === "live" && (
         <section className="card" style={{ marginBottom: 16 }}>
           <h2>Live configuration (from env presence only — values are never shown)</h2>
           <ul>{live.providers.map((p) => (
             <li key={p.provider}><strong>{p.provider}</strong>: {p.configured ? "Configured ✓" : <>Not connected — missing env: {p.missing.join(", ")} (no fake numbers are shown for this provider in live mode)</>}</li>
           ))}</ul>
-          <p className="caption">Full setup: docs/REAL_ACCOUNTS.md. The demo connection cards below are the demo dataset, not live connections.</p>
         </section>
       )}
       <div className="grid grid-3" style={{ marginBottom: 16 }}>{CONNECTIONS.map((c) => <ConnectionCard key={c.id} c={c} />)}</div>
@@ -44,13 +41,11 @@ export default function Connections() {
         </div>
         <h3>{s.title}</h3>
         <pre style={{ background: "var(--bg-sunken)", padding: 16, borderRadius: "var(--radius-8)", overflowX: "auto", fontSize: 12 }}>{s.code}</pre>
-        <p className="caption">AWS: activate user-defined cost-allocation tags before they appear in cost data. A unique ExternalId is generated per connection and never reused (confused-deputy defence). GCP: exports are not retroactive — history starts on enablement.</p>
         <h3>Test connection — permission checklist ({done}/{s.perms.length} passing)</h3>
         <ul>{s.perms.map(([p, reason]) => (
           <li key={p}><label><input type="checkbox" checked={!!checks[`${provider}:${p}`]} onChange={() => toggle(p)} /> <strong>{p}</strong> — {reason} {!checks[`${provider}:${p}`] && <span className="muted">(if missing: re-apply the snippet above for this permission only)</span>}</label></li>))}
         </ul>
         <div style={{ display: "flex", gap: 8 }}><button className="btn-ghost" onClick={() => setStep(Math.max(0, step - 1))}>Back</button><button className="btn" onClick={() => setStep(Math.min(STEPS.length - 1, step + 1))}>{done === s.perms.length ? "All checks pass — Continue" : "Continue (checks pending)"}</button></div>
-        <p className="small muted" style={{ marginTop: 12 }}>States: Pending → Validating → Awaiting first export → Backfilling → Healthy; Degraded / Broken / Revoked on failure. Revoking a role flips the connection to Broken within one health-check interval and raises an alert.</p>
       </section>
     </div>
   );

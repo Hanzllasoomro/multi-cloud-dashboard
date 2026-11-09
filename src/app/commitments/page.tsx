@@ -6,7 +6,6 @@ export default function Commitments() {
   return (
     <div>
       <h1>Commitments</h1>
-      <p className="muted">AWS Savings Plans / Reserved Instances, Azure reservations / savings plans and GCP committed use discounts normalised into one entity. Utilisation and coverage are checked against provider consoles for pilot accounts.</p>
       <section className="card">
         <DataTable columns={[
           { key: "t", header: "Type", render: (r) => `${r.provider} · ${r.type}` },
@@ -18,7 +17,6 @@ export default function Commitments() {
           { key: "un", header: "Unused cost /mo", numeric: true, render: (r) => `$${r.unusedCost.toLocaleString()}`, sortValue: (r) => r.unusedCost },
           { key: "st", header: "Flag", render: (r) => r.utilization < 90 ? <Badge tone="warning">Under-used</Badge> : <Badge tone="success">Healthy</Badge> },
         ]} rows={COMMITMENTS} totals={["TOTAL", "", "", "", "", "", `$${COMMITMENTS.reduce((a, c) => a + c.unusedCost, 0).toLocaleString()}`, ""]} />
-        <p className="caption">Expiring-soon alerts fire before end dates. Purchase advice starts from provider recommendations before any in-house purchase modelling.</p>
       </section>
     </div>
   );

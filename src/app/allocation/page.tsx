@@ -16,7 +16,6 @@ export default function Allocation() {
   return (
     <div>
       <h1>Allocation &amp; Showback</h1>
-      <p className="muted">Hierarchy: Organisation → business unit → team → project. Rule precedence, a preview that simulates impact before saving, and versioned rule sets. Saving triggers a deterministic re-allocation over history.</p>
       <section className="card" style={{ marginBottom: 16 }}>
         <h2>Reconciliation — allocated totals always equal source totals</h2>
         <p>Source total {fmtMoneyFull(total)} = allocated {fmtMoneyFull(allocated)} + untagged {fmtMoneyFull(untagged)} (nothing lost, nothing doubled). Untagged spend is always its own line, never hidden.</p>
@@ -29,7 +28,6 @@ export default function Allocation() {
           { key: "c", header: "Cost", numeric: true, render: (r) => fmtMoneyFull(r.cost), sortValue: (r) => r.cost },
           { key: "s", header: "Share", numeric: true, render: (r) => `${((r.cost / total) * 100).toFixed(1)}%`, sortValue: (r) => r.cost },
         ]} rows={byTeam.data} totals={["TOTAL", fmtMoneyFull(total), "100.0%"]} />
-        <p className="caption">Messy tags in the demo data (e.g. “Prod”, “ prod ”, “PROD”) are normalised to one key before allocation; the original value is kept on the row.</p>
       </section>
       <section className="card">
         <h2>Rules</h2>
@@ -40,7 +38,6 @@ export default function Allocation() {
           { key: "tg", header: "Target", render: (r) => r.target },
           { key: "s", header: "Split", render: (r) => r.split },
         ]} rows={ALLOCATION_RULES} />
-        <p className="caption">Shared costs (support, tax, credits, commitments, untagged) distribute by fixed, proportional or even split. Tag hygiene: coverage, inconsistent keys/values, top untagged spenders and suggested alias mappings are reported on this page in production.</p>
       </section>
     </div>
   );

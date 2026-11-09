@@ -27,7 +27,6 @@ export default function FilterBar({ value, onChange, services = [], regions = []
         <button className="btn-ghost" onClick={() => onChange(DEFAULT_FILTERS)}>Clear all</button>
       </div>
       {chips.length > 0 && <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 10 }}>{chips.map((c) => <span key={c.label} className="chip">{c.label} <button aria-label={`Remove ${c.label}`} onClick={c.clear}>×</button></span>)}</div>}
-      <p className="caption" style={{ margin: "8px 0 0" }}>Filters are reflected in the chart and table below; the same state is used by every view, so a view is shareable by copying its filter set. Currency conversion is labelled in the API envelope (FX rate + date) — demo data is USD only.</p>
     </div>
   );
 }

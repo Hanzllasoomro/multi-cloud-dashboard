@@ -11,10 +11,9 @@ export default function Recommendations() {
   return (
     <div>
       <h1>Recommendations</h1>
-      <p className="muted">Provider-native sources (AWS Cost Optimization Hub / Compute Optimizer, Azure Advisor Cost, GCP Recommender) plus Ledger&apos;s own inventory/utilisation rules, in one entity. Savings are the provider&apos;s estimate, labelled as such. Realised savings are verified by comparing cost before and after implementation.</p>
       <label className="small">Status <select className="select" value={status} onChange={(e) => setStatus(e.target.value)}><option>All</option><option>Open</option><option>Accepted</option><option>Dismissed</option><option>Implemented</option></select></label>
       <p><strong>Open potential savings: {fmtMoneyFull(total)}/month</strong></p>
-      <p><strong>Total estimated monthly savings (all recommendations, estimate): {fmtMoneyFull(totalAll)}/month</strong> — provider estimates only, not guaranteed savings; realised savings are verified by comparing cost before and after implementation.</p>
+      <p><strong>Total estimated monthly savings (all recommendations, estimate): {fmtMoneyFull(totalAll)}/month</strong></p>
       <div className="grid grid-2">{list.map((r) => <RecommendationCard key={r.id} r={r} />)}</div>
     </div>
   );

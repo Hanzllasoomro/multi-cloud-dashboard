@@ -11,11 +11,10 @@ import DataTable from "../components/DataTable";
 import AnomalyCard from "../components/AnomalyCard";
 import BudgetMeter from "../components/BudgetMeter";
 import { useScenarioRows } from "../components/useScenarioRows";
-import { scenarioSummary } from "../lib/demo-scenario";
 
 export default function Overview() {
   const baseRows = useMemo(() => allRows(), []);
-  const { rows, scenario } = useScenarioRows(baseRows);
+  const { rows } = useScenarioRows(baseRows);
   const months = useMemo(() => monthlyTotals(rows), [rows]);
   const mtd = monthCost(rows, "2026-10");
   const last = monthCost(rows, "2026-09");
@@ -28,7 +27,7 @@ export default function Overview() {
   const byAccount = runQuery(rows, { groupBy: ["subAccount"], start: "2025-11-01", end: "2026-10-26", topN: 6 }).data;
   const delta = last ? ((mtd - last) / last) * 100 : null;
   const fcSeries = months.map((m) => m.month === "2026-10" ? fc.forecast : m.cost);
-  // Unit economics (labelled): total 12-month cost / days in the demo range.
+  // Unit economics: total 12-month cost / days in range.
   const [accounts, setAccounts] = useState<{ displayName: string; status: string }[] | null>(null);
   useEffect(() => { fetch("/api/accounts").then((r) => r.json()).then((j) => setAccounts(j.data)).catch(() => undefined); }, []);
   const flagged = (accounts || []).filter((a) => a.status === "Paused" || a.status === "Broken");
@@ -44,14 +43,8 @@ export default function Overview() {
         </div>
         <div className="page-actions">
           <Link href="/explorer" className="btn">+ Explore costs</Link>
-          <Link href="/demo" className="btn-ghost">Judge walkthrough</Link>
         </div>
       </div>
-      {scenario?.active && (
-        <section className="banner" style={{ background: "var(--status-info-bg)" }}>
-          <span className="small"><strong>Demo scenario active:</strong> {scenarioSummary(scenario)} — demo data only. Change it in <Link href="/demo-studio">Demo Studio</Link>, then reload this page.</span>
-        </section>
-      )}
       {accounts && (
         <section className="card" style={{ marginBottom: 16 }}>
           <h2>Connected accounts</h2>
@@ -67,9 +60,9 @@ export default function Overview() {
         <KpiCard label="Open anomalies" value={String(anomalies.length)} kind="plain" href="/anomalies" caption="Needs review" />
       </div>
       <section className="dark-card" style={{ marginBottom: 16 }}>
-        <h2 style={{ color: "#fff" }}>Cost per day — unit economics (labelled)</h2>
+        <h2 style={{ color: "#fff" }}>Cost per day</h2>
         <p style={{ fontSize: 22, fontWeight: 800, color: "#fff", margin: "6px 0" }} className="tnum">{fmtMoneyFull(costPerDay)} / day</p>
-        <p>{fmtMoneyFull(total12)} over {daysInRange} days (Nov 2025 – Oct 2026, all providers). Use it as cost per day, then divide by your own unit (customers, requests, orders) for cost per unit; see docs/REAL_ACCOUNTS.md for the unit-economics extension. Budget vs forecast for the total is in <Link href="/budgets">Budget status</Link> below.</p>
+        <p>{fmtMoneyFull(total12)} over {daysInRange} days (Nov 2025 – Oct 2026, all providers).</p>
       </section>
       <div className="grid grid-2" style={{ marginBottom: 16 }}>
         <section className="card"><h2>Trend + forecast band</h2>

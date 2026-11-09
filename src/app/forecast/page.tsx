@@ -14,7 +14,6 @@ export default function Forecast() {
   return (
     <div>
       <h1>Forecast</h1>
-      <p className="muted">Month-end forecast = actual-to-date + projected remainder (run rate, weekday-adjusted, fixed/scheduled charges added, one-offs removed). Method is chosen per series by backtest, with a linear fallback when data is thin — and always stated in plain words.</p>
       {oct && <section className="card" style={{ marginBottom: 16 }}><h2>October 2026 month-end</h2><p style={{ fontSize: 22, fontWeight: 700 }}>{fmtMoneyFull(oct.forecast)} <span className="small muted">range {fmtMoneyFull(oct.low)} – {fmtMoneyFull(oct.high)}</span></p><p className="small">{oct.method}</p></section>}
       <section className="card" style={{ marginBottom: 16 }}>
         <h2>Actual vs forecast band</h2>

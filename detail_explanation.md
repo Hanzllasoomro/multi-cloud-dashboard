@@ -6,7 +6,7 @@
 > page does, how the data works, how security works, how to run and
 > test it, and — just as importantly — what it does **not** do yet.
 >
-> **Current version:** 1.7.0 · **Stack:** Next.js 14 (App Router) +
+> **Current version:** 1.8.0 · **Stack:** Next.js 14 (App Router) +
 > TypeScript (strict) + React 18 · **Charts:** hand-built SVG, no
 > chart library · **Tests:** 46 Vitest tests, all passing ·
 > **Licence:** MIT · **Repo:**
@@ -1033,6 +1033,8 @@ the demo tooling in one flow, without pretending the data is live.
 | 1.5 | `e125c05c` | Demo Studio: multipliers, presets, extra demo accounts, file-backed scenarios, demo-mode only |
 | 1.5.1 | `86ff2118` | Demo Studio preset impact: what goes up/down/unchanged/added, per provider/account/service, highlighted fields |
 | (docs) | `cf16645e` | Docs-only: Demo Studio testing guide (8 scenarios) — no code or version change |
+| 1.6 | `9fb4d665` | Full auth/backend rebuild: TOTP MFA, password reset, API keys, session management, auth audit log; modular `src/lib/auth/`; 56 tests |
+| 1.7 | `849e9dde` | Postgres store (Vercel Postgres) for users, sessions, API keys, reset tokens, MFA challenges, audit log and connected accounts when `DATABASE_URL` is set; file/in-memory fallback otherwise; 61 tests |
 
 ### A final note to viewers
 

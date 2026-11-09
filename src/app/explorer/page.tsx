@@ -41,7 +41,6 @@ export default function Explorer() {
   return (
     <div>
       <h1>Cost Explorer</h1>
-      <p className="muted">Group, compare, change granularity and cost basis. Chart and table are linked — they always show the same filtered view, and the totals row reconciles to the chart.</p>
       <FilterBar value={filters} onChange={setFilters} services={SERVICES} regions={REGIONS} />
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", margin: "16px 0" }}>
         <label className="small">Group by <select className="select" value={groupBy} onChange={(e) => setGroupBy(e.target.value as GroupKey)}>
@@ -71,7 +70,6 @@ export default function Explorer() {
           { key: "usage", header: "Usage qty", numeric: true, render: (r) => r.usage.toLocaleString(), sortValue: (r) => r.usage },
           { key: "rows", header: "Line items", numeric: true, render: (r) => String(r.rows), sortValue: (r) => r.rows },
         ]} rows={q.data} totals={["TOTAL", fmtMoneyFull(q.totals.cost), q.totals.usage.toLocaleString(), String(q.totals.rows)]} />
-        <p className="caption">Totals reconcile to the chart above (same query, same filters). Line-item drill-down: every figure traces to FOCUS rows with x_ lineage; provider-console deep links are derived from ResourceId where a URL pattern exists.</p>
       </section>
     </div>
   );

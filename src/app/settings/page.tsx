@@ -1,6 +1,5 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
-import Link from "next/link";
 import DataTable from "../../components/DataTable";
 import Badge from "../../components/Badge";
 import SecuritySettings from "../../components/SecuritySettings";
@@ -10,11 +9,6 @@ const ROLES = ROLE_MATRIX.map((r) => ({
   role: r.role, plan: r.plan, members: r.members, connections: r.connections, data: r.data,
   budgets: r.budgets, allocation: r.allocation, exports: r.exports, api: r.api, audit: r.audit,
 }));
-const LEGACY_AUDIT = [
-  { when: "2026-10-26 09:12", who: "finops@acme.example", what: "Budget created: Total cloud spend" },
-  { when: "2026-10-25 17:40", who: "admin@acme.example", what: "Connection health check: Azure → Degraded" },
-  { when: "2026-10-24 11:03", who: "analyst@acme.example", what: "Explorer export (CSV, 11 groups)" },
-];
 type Account = {
   id: string; provider: string; displayName: string; accountId: string; billingAccount: string;
   scope: { providers: string[]; accounts: string[]; tags: string[]; teams: string[] };
@@ -50,7 +44,7 @@ export default function Settings() {
         fetch("/api/auth/me").then((r) => r.json()).catch(() => ({})),
       ]);
       setAccounts(a.data || []);
-      setAudit([...(u.data || []), ...LEGACY_AUDIT]);
+      setAudit(u.data || []);
       if (m.data) setMe(m.data);
     } catch { /* keep previous state; table shows empty-state note below */ }
     try {
@@ -125,19 +119,12 @@ export default function Settings() {
   return (
     <div>
       <h1>Settings</h1>
-      <p className="muted">Organisation, members and roles, API keys, webhooks, integrations, plan and billing, audit log. Scopes are injected as mandatory filters in the query layer, never only hidden in the UI.</p>
 
       <section className="card" style={{ marginBottom: 16 }}>
         <h2>Connected accounts</h2>
         <p className="small">
-          Add, edit, pause, test and remove cloud accounts here. <Link href="/connections">Connections</Link> is the onboarding wizard (IaC + permission reasons);
-          this section is where accounts are managed day to day. Paused accounts are excluded from <code>/api/query</code> totals.
+          Paused accounts are excluded from <code>/api/query</code> totals.
           {pausedBroken.length > 0 && <> ⚠ Paused / broken: {pausedBroken.map((a) => a.displayName).join(", ")}.</>}
-        </p>
-        <p className="caption">
-          <strong>Store note:</strong> accounts are kept in an in-memory server store in this version — it resets on server restart.
-          A database replaces this one module later. <strong>No credentials are ever stored here:</strong> live-mode credentials stay in
-          server environment variables only (see docs/REAL_ACCOUNTS.md), so this form has no secret fields at all.
         </p>
         {err && <p role="alert" style={{ color: "var(--status-danger-text)" }}>{err}</p>}
         {msg && <p role="status" style={{ color: "var(--status-success-text)" }}>{msg}</p>}
@@ -169,7 +156,7 @@ export default function Settings() {
         )}
         {testResult && (
           <section aria-label="Test connection result" style={{ marginTop: 16, border: "1px solid var(--border-default)", borderRadius: "var(--radius-8)", padding: 12 }}>
-            <h3>Test connection — {testResult.name} ({testResult.passed}/{testResult.total} passed, {testResult.mode} mode{testResult.mode === "demo" ? ", simulated checklist" : ", env-presence check"})</h3>
+            <h3>Test connection — {testResult.name} ({testResult.passed}/{testResult.total} passed)</h3>
             <ul>{testResult.checklist.map((c) => (
               <li key={c.permission}>{c.status === "pass" ? "✓" : "✗"} <strong>{c.permission}</strong> — {c.reason}{c.fix && <> — <em>Fix: {c.fix}</em></>}</li>
             ))}</ul>
@@ -184,7 +171,6 @@ export default function Settings() {
               <label className="small"><input type="radio" checked={dataChoice === "keep"} onChange={() => setDataChoice("keep")} /> Keep historical data</label>{" "}
               <label className="small"><input type="radio" checked={dataChoice === "purge"} onChange={() => setDataChoice("purge")} /> Purge data</label>
             </div>
-            <p className="caption">Purge note: demo rows are a shared synthetic dataset, so a purge is recorded in the audit log but does not delete other accounts’ demo rows; in production a purge job deletes this account’s rows.</p>
             <button className="btn" disabled={confirmText !== removing.displayName} onClick={doRemove}>Remove account</button>{" "}
             <button className="btn-ghost" onClick={() => setRemoving(null)}>Cancel</button>
           </section>
@@ -202,16 +188,11 @@ export default function Settings() {
           <button className="btn" type="submit">{editing ? "Save changes" : "Add account"}</button>
           {editing && <button className="btn-ghost" type="button" onClick={() => { setEditing(null); setForm(EMPTY_FORM); }}>Cancel edit</button>}
         </form>
-        <p className="caption">No secret fields: for live mode, credentials are set as server environment variables only (docs/REAL_ACCOUNTS.md). New accounts start Pending — run Test connection to validate them. Scope sub-accounts are the names that appear in cost rows (demo: prod-aws, staging-aws, prod-azure-sub, prod-gcp-project); pausing an account excludes exactly those rows from query totals.</p>
         </>) : (<p className="caption">Account management (add, edit, pause, test, remove) requires Owner, Admin, or FinOps Manager. Your role ({me?.role || "unknown"}) can view accounts read-only.</p>)}
       </section>
 
       <section className="card" style={{ marginBottom: 16 }}>
         <h2>Team members</h2>
-        <p className="small">
-          Registered users. The first registered user is the Owner; later registrations start as Viewers.
-          {canManageMembers ? " Change a role below — demoting the last Owner is blocked by the API." : " Role changes are for Owner and Admin only."}
-        </p>
         {usersNote && <p className="caption">{usersNote}</p>}
         {users.length === 0 ? <p className="small">No team members listed.</p> : (
           <DataTable columns={[
@@ -225,7 +206,6 @@ export default function Settings() {
             { key: "c", header: "Created", render: (r) => r.createdAt },
           ]} rows={users} />
         )}
-        <p className="caption">Password reset is token-based — see <a href="/forgot-password">Forgot password</a> (docs/SECURITY.md). Demo accounts (LEDGER_DEMO_AUTH) are always Viewers.</p>
       </section>
 
       <section className="card" style={{ marginBottom: 16 }}>
@@ -244,10 +224,8 @@ export default function Settings() {
         ]} rows={ROLES} />
       </section>
       <SecuritySettings />
-      <p className="caption" style={{ marginBottom: 16 }}>SSO/SCIM: buy via WorkOS/Auth0/Clerk/Keycloak; the authorisation model itself is owned by Ledger. WebAuthn is not built yet.</p>
       <section className="card">
         <h2>Audit log (append-only, exportable)</h2>
-        <p className="caption">Account actions (add, edit, pause, resume, test, remove) appear here first, newest first, followed by earlier demo entries.</p>
         <DataTable columns={[
           { key: "w", header: "When", render: (r) => r.when },
           { key: "who", header: "Who", render: (r) => r.who },

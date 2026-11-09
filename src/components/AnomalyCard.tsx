@@ -11,7 +11,6 @@ export default function AnomalyCard({ a }: { a: Anomaly }) {
       <p>Actual {fmtMoneyFull(a.actual)} vs expected {fmtMoneyFull(a.expected)} — <strong>{fmtMoneyFull(a.delta)} (+{a.deltaPct}%)</strong> on {a.date}. Status: {a.status}.</p>
       <p className="small muted">Top contributors (root-cause decomposition):</p>
       <ul>{a.contributors.map((c) => <li key={c.label} className="small">{c.label}: {fmtMoneyFull(c.amount)}</li>)}</ul>
-      <p className="caption">Method: median/MAD baseline, min $500 and 25% thresholds; Purchase charges excluded so commitment buys never look like spikes.</p>
     </article>
   );
 }

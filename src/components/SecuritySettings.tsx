@@ -105,7 +105,6 @@ export default function SecuritySettings() {
             <button className="btn-ghost" type="submit">Disable MFA</button>
           </form>
         )}
-        <p className="caption">A stolen session alone cannot disable MFA — the account password is required. Backup codes are one-time use.</p>
       </section>
 
       <section className="card" style={{ marginBottom: 16 }}>
@@ -119,7 +118,6 @@ export default function SecuritySettings() {
           ]} rows={sessions} />
         )}
         <button className="btn-ghost" type="button" onClick={revokeOthers}>Sign out everywhere else</button>
-        <p className="caption">Sessions last 24 hours. Resetting a password revokes all sessions.</p>
       </section>
 
       <section className="card" style={{ marginBottom: 16 }}>
