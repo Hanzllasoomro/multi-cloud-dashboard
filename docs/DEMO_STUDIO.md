@@ -2,7 +2,7 @@
 
 Open **Demo Studio** in the sidebar (General) or at `/demo-studio`. It is a
 separate control surface from the dashboards: change the demo story there,
-save, reload a dashboard tab, and the new story is live.
+save, and the new story is live on every open dashboard tab within a second (v1.8.3 auto-refresh).
 
 ## What it changes
 
@@ -81,9 +81,9 @@ or FinOps Manager only (`manageConnections` permission, enforced server-side).
    on Windows), then `git pull origin main`, `npm install`, `npm run dev`.
 2. Register/sign in, open Demo Studio in a second tab, pick a preset or
    set multipliers, press **Save & activate**.
-3. Reload the dashboard tab and confirm the Overview banner names your
+3. Watch the dashboard tab update on its own and confirm the Overview banner names your
    scenario and the totals match the Studio preview.
-4. Mid-talk, switch presets from the Studio tab and reload the dashboard.
+4. Mid-talk, switch presets from the Studio tab and watch the dashboard follow on its own.
 5. Afterwards, press **Reset to original demo** so the next run starts
    from the seeded story.
 

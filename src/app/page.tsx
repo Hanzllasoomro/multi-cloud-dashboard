@@ -14,7 +14,7 @@ import { useScenarioRows } from "../components/useScenarioRows";
 
 export default function Overview() {
   const baseRows = useMemo(() => allRows(), []);
-  const { rows } = useScenarioRows(baseRows);
+  const { rows, scenario, updatedAt } = useScenarioRows(baseRows);
   const months = useMemo(() => monthlyTotals(rows), [rows]);
   const mtd = monthCost(rows, "2026-10");
   const last = monthCost(rows, "2026-09");
@@ -37,6 +37,11 @@ export default function Overview() {
         <div>
           <h1>Overview</h1>
           <p className="muted" style={{ margin: 0 }}>Spend, forecast, budgets and savings — across AWS, Azure and GCP.</p>
+          <p className="muted" style={{ margin: "4px 0 0", fontSize: 12 }}>
+            <span style={{ color: "#175E3B" }}>● Live</span>
+            {scenario?.active ? " — demo scenario active, updates automatically" : " — updates automatically when Demo Studio saves"}
+            {updatedAt ? ` · updated ${updatedAt.toLocaleTimeString()}` : ""}
+          </p>
         </div>
         <div className="page-actions">
           <Link href="/explorer" className="btn">+ Explore costs</Link>

@@ -1,5 +1,6 @@
 "use client";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { notifyScenarioChanged } from "../../lib/demo-scenario-channel";
 import Link from "next/link";
 import { allRows, monthCost } from "../../lib/data";
 import { fmtMoneyFull } from "../../lib/format";
@@ -72,6 +73,7 @@ export default function DemoStudio() {
     const j = await r.json().catch(() => ({}));
     if (!r.ok) { setErr(j.error || "Save failed"); return; }
     setDraft(cleanScenario(j.data));
+    notifyScenarioChanged(); // open dashboard tabs refresh within a second
     setMsg(okMsg);
   }
   async function reset() {
@@ -81,7 +83,8 @@ export default function DemoStudio() {
     if (!r.ok) { setErr(j.error || "Reset failed"); return; }
     setDraft(cleanScenario(j.data));
     setLastPreset(null);
-    setMsg("Reset to the original seeded demo. Reload any open dashboard tab to see it.");
+    notifyScenarioChanged(); // open dashboard tabs refresh within a second
+    setMsg("Reset to the original seeded demo. Open dashboard tabs update automatically.");
   }
   function setMult(kind: "provider" | "account" | "service", key: string, value: number) {
     setLastPreset(null);
@@ -250,7 +253,7 @@ export default function DemoStudio() {
       <section className="card" style={{ marginBottom: 16 }}>
         <h2>Save, use, reset</h2>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <button className="btn" disabled={!canEdit} onClick={() => save({ ...draft, active: true }, "Scenario saved and active. Reload any open dashboard tab to see it.")}>Save &amp; activate</button>
+          <button className="btn" disabled={!canEdit} onClick={() => save({ ...draft, active: true }, "Scenario saved and active. Open dashboard tabs update automatically.")}>Save &amp; activate</button>
           <button className="btn-ghost" disabled={!canEdit} onClick={() => save(draft, "Scenario saved.")}>Save draft as-is</button>
           <button className="btn-ghost" disabled={!canEdit} onClick={reset}>Reset to original demo</button>
         </div>
