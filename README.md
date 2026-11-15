@@ -207,6 +207,21 @@ FAQ and CTA. Typography is Fraunces (display) + Inter (body) via
 data charts — no binary images, so the page pushes cleanly. The dashboard
 moved from `/` to `/overview`; sign-in lands there.
 
+## Governance views (v1.10)
+
+Adapted from the Metabase multi-cloud dashboard template
+(metabase.com/dashboards/multi-cloud-dashboard): Overview is now
+governance-first — `1 · Governance at a glance` (KPIs + a generated
+"What needs attention" card), `2 · Spend by provider` (stacked monthly
+spend by provider + an Aug → Sep change waterfall with a dark Total bar),
+`3 · Tagging & services` (tagging compliance by provider on a full 0–100%
+scale + a top-services table with MoM). One fixed colour per provider
+(AWS blue, GCP green, Azure teal) is used identically in every chart.
+Deliberately NOT adapted: egress (no data-transfer service exists in the
+seeded catalogue) and utilization/SLA (Ledger holds billing rows, not
+monitoring data). MoM comparisons use the last two completed months
+because October is partial.
+
 ## Routes
 
 Pages: `/` homepage, `/overview`, `/login`, `/register`, `/demo`, `/explorer`, `/connections`, `/budgets`, `/anomalies`,

@@ -1,6 +1,83 @@
 // Internal chart adapter: all charts are hand-built SVG (no chart-library lock-in).
 // Series colours use the Okabe-Ito palette; every series is labelled, never colour alone.
 export const SERIES = ["#0072B2", "#C77700", "#009E73", "#CC79A7", "#7B5EA7", "#D55E00"];
+// Fixed provider colours (v1.10, Metabase pattern): one colour per provider,
+// used identically in every chart so comparison needs no re-reading of legends.
+export const PROVIDER_COLORS: Record<string, string> = { AWS: "#0072B2", GCP: "#009E73", Azure: "#2A9D8F" };
+const colorFor = (label: string, i: number) => PROVIDER_COLORS[label] || SERIES[i % SERIES.length];
+
+/** Month-over-month change waterfall (v1.10): one bar per provider's change
+ *  plus a dark Total bar. Bars start at zero; negatives hang below the line.
+ *  Values are labelled on the bars so the reader never has to read the axis. */
+export function WaterfallChart({ data }: { data: { label: string; value: number; color?: string }[] }) {
+  const W = 720, H = 220;
+  const max = Math.max(...data.map((d) => Math.abs(d.value)), 1);
+  const hasNegative = data.some((d) => d.value < 0);
+  // With a negative bar the zero line moves to the middle so the bar and its
+  // label fit inside the viewBox; all-positive stays baseline-at-bottom.
+  const zeroY = hasNegative ? Math.round(H / 2) - 8 : H - 30;
+  const scale = hasNegative ? zeroY - 34 : H - 60;
+  const n = data.length;
+  const bw = Math.min(90, (W - 20) / n * 0.55);
+  const step = (W - 20) / n;
+  const y = (v: number) => zeroY - (v / max) * scale;
+  return (
+    <div>
+      <svg viewBox={`0 0 ${W} ${H}`} width="100%" role="img" aria-label="Change waterfall chart">
+        <line x1="10" y1={zeroY} x2={W - 10} y2={zeroY} stroke="var(--n-300)" strokeWidth="1" />
+        {data.map((d, i) => {
+          const x = 10 + i * step + (step - bw) / 2;
+          const top = Math.min(y(d.value), zeroY);
+          const h = Math.max(Math.abs(zeroY - y(d.value)), 2);
+          return (
+            <g key={d.label}>
+              <rect x={x} y={top} width={bw} height={h} rx={6} fill={d.color || colorFor(d.label, i)}>
+                <title>{`${d.label}: ${d.value >= 0 ? "+" : "−"}$${Math.abs(Math.round(d.value)).toLocaleString()}`}</title>
+              </rect>
+              <text x={x + bw / 2} y={d.value >= 0 ? top - 6 : top + h + 14} textAnchor="middle" fontSize="12" fontWeight="700" fill="var(--text-primary)">{d.value >= 0 ? "+" : "−"}${Math.abs(Math.round(d.value)).toLocaleString()}</text>
+              <text x={x + bw / 2} y={H - 8} textAnchor="middle" fontSize="12" fill="var(--text-secondary)">{d.label}</text>
+            </g>
+          );
+        })}
+      </svg>
+      <div className="caption">Change in $ vs the previous completed month. The Total bar is the sum of the provider bars.</div>
+    </div>
+  );
+}
+
+/** Stacked monthly spend by provider (v1.10): AWS bottom, GCP middle, Azure
+ *  top — the same order and colours in every chart. Totals printed on bars. */
+export function StackedBarChart({ data }: { data: { month: string; AWS: number; Azure: number; GCP: number; total: number }[] }) {
+  const W = 720, H = 240, base = H - 26;
+  const max = Math.max(...data.map((d) => d.total), 1);
+  const n = data.length;
+  const bw = Math.min(64, (W - 20) / n * 0.55);
+  const step = (W - 20) / n;
+  const order: ("AWS" | "GCP" | "Azure")[] = ["AWS", "GCP", "Azure"];
+  return (
+    <div>
+      <svg viewBox={`0 0 ${W} ${H}`} width="100%" role="img" aria-label="Stacked monthly spend by provider">
+        {data.map((d, i) => {
+          const x = 10 + i * step + (step - bw) / 2;
+          let y = base;
+          return (
+            <g key={d.month}>
+              {order.map((p) => {
+                const h = (d[p] / max) * (H - 56);
+                const rect = <rect key={p} x={x} y={y - h} width={bw} height={Math.max(h, 0)} fill={PROVIDER_COLORS[p]}><title>{`${d.month} · ${p}: $${Math.round(d[p]).toLocaleString()}`}</title></rect>;
+                y -= h; return rect;
+              })}
+              <text x={x + bw / 2} y={y - 6} textAnchor="middle" fontSize="12" fontWeight="700" fill="var(--text-primary)">${Math.round(d.total / 1000)}K</text>
+              <text x={x + bw / 2} y={H - 6} textAnchor="middle" fontSize="12" fill="var(--text-secondary)">{d.month.slice(5)}</text>
+            </g>
+          );
+        })}
+      </svg>
+      <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>{order.map((p) => <span key={p} className="small"><span style={{ color: PROVIDER_COLORS[p] }}>■</span> {p}</span>)}</div>
+      <div className="caption">Monthly totals in $K. October is partial (data as of Oct 26).</div>
+    </div>
+  );
+}
 function scalePts(values: number[], w: number, h: number, pad = 8) {
   const max = Math.max(...values, 1);
   return values.map((v, i) => `${pad + (i / Math.max(values.length - 1, 1)) * (w - pad * 2)},${h - pad - (v / max) * (h - pad * 2)}`);
@@ -56,19 +133,21 @@ export function DonutChart({ data }: { data: { label: string; value: number }[] 
       <svg width="170" height="170" viewBox="0 0 170 170" role="img" aria-label="Donut chart">
         {data.map((d, i) => {
           const frac = d.value / total; const dash = frac * C; const off = -acc * C; acc += frac;
-          return <circle key={d.label} cx="85" cy="85" r={R} fill="none" stroke={SERIES[i % SERIES.length]} strokeWidth="26" strokeDasharray={`${dash} ${C - dash}`} strokeDashoffset={off} transform="rotate(-90 85 85)"><title>{`${d.label}: $${Math.round(d.value).toLocaleString()}`}</title></circle>;
+          return <circle key={d.label} cx="85" cy="85" r={R} fill="none" stroke={colorFor(d.label, i)} strokeWidth="26" strokeDasharray={`${dash} ${C - dash}`} strokeDashoffset={off} transform="rotate(-90 85 85)"><title>{`${d.label}: $${Math.round(d.value).toLocaleString()}`}</title></circle>;
         })}
         <text x="85" y="85" textAnchor="middle" fontSize="13" fontWeight="700" fill="var(--text-primary)">${(total / 1000).toFixed(0)}K</text>
       </svg>
-      <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>{data.map((d, i) => <li key={d.label} className="small"><span style={{ color: SERIES[i % SERIES.length] }}>■</span> {d.label} — ${Math.round(d.value).toLocaleString()} ({((d.value / total) * 100).toFixed(1)}%)</li>)}</ul>
+      <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>{data.map((d, i) => <li key={d.label} className="small"><span style={{ color: colorFor(d.label, i) }}>■</span> {d.label} — ${Math.round(d.value).toLocaleString()} ({((d.value / total) * 100).toFixed(1)}%)</li>)}</ul>
     </div>
   );
 }
 // Adapter: one component chooses the chart type so views never import a chart library.
-export function Chart(props: { type: "line" | "bar" | "donut" | "hbar"; [k: string]: unknown }) {
+export function Chart(props: { type: "line" | "bar" | "donut" | "hbar" | "waterfall" | "stacked"; [k: string]: unknown }) {
   const { type, ...rest } = props;
   if (type === "line") return <LineChart {...(rest as unknown as React.ComponentProps<typeof LineChart>)} />;
   if (type === "donut") return <DonutChart {...(rest as unknown as React.ComponentProps<typeof DonutChart>)} />;
+  if (type === "waterfall") return <WaterfallChart {...(rest as unknown as React.ComponentProps<typeof WaterfallChart>)} />;
+  if (type === "stacked") return <StackedBarChart {...(rest as unknown as React.ComponentProps<typeof StackedBarChart>)} />;
   if (type === "hbar") return <BarChart {...(rest as unknown as React.ComponentProps<typeof BarChart>)} horizontal />;
   return <BarChart {...(rest as unknown as React.ComponentProps<typeof BarChart>)} />;
 }
