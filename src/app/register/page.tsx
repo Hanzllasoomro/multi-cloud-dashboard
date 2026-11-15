@@ -36,7 +36,7 @@ export default function Register() {
         router.push("/login?session_lost=1");
         return;
       }
-      router.push("/"); router.refresh();
+      router.push("/overview"); router.refresh();
     } finally { setLoading(false); }
   }
   return (

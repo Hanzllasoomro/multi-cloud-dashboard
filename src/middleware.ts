@@ -14,7 +14,7 @@ import { NextRequest, NextResponse } from "next/server";
 // SESSION_COOKIE in src/lib/auth.ts.
 const SESSION_COOKIE = "ledger_session";
 
-const PUBLIC_PATHS = ["/login", "/register", "/forgot-password", "/reset-password"];
+const PUBLIC_PATHS = ["/", "/login", "/register", "/forgot-password", "/reset-password"];
 const PUBLIC_PREFIXES = ["/api/auth", "/_next", "/favicon.ico"];
 
 export function middleware(req: NextRequest) {

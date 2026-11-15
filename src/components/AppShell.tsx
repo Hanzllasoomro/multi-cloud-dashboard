@@ -6,7 +6,7 @@ import FreshnessIndicator from "./FreshnessIndicator";
 import { DATA_AS_OF } from "../lib/types";
 const NAV_GROUPS = [
   { label: "Menu", items: [
-    ["Overview", "/"], ["Cost Explorer", "/explorer"], ["Budgets", "/budgets"],
+    ["Overview", "/overview"], ["Cost Explorer", "/explorer"], ["Budgets", "/budgets"],
     ["Anomalies", "/anomalies"], ["Forecast", "/forecast"], ["Commitments", "/commitments"], ["Recommendations", "/recommendations"],
     ["Allocation", "/allocation"], ["Reports", "/reports"], ["Data Health", "/data-health"],
   ] },
@@ -21,27 +21,29 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const [search, setSearch] = useState("");
   const router = useRouter();
   const isAuthPage = path === "/login" || path === "/register";
+  const isLandingPage = path === "/";
   useEffect(() => {
-    if (isAuthPage) return;
+    if (isAuthPage || isLandingPage) return;
     fetch("/api/auth/me").then(async (r) => {
       if (r.status === 401) { router.replace("/login"); return; }
       const j = await r.json().catch(() => ({}));
       if (j.data) setMe(j.data);
     }).catch(() => undefined);
-  }, [isAuthPage, router]);
+  }, [isAuthPage, isLandingPage, router]);
   async function logout() {
     await fetch("/api/auth/logout", { method: "POST" }).catch(() => undefined);
     router.push("/login"); router.refresh();
   }
   useEffect(() => { document.documentElement.setAttribute("data-theme", theme); }, [theme]);
-  const crumb = path === "/" ? "Overview" : path.slice(1).split("-").map((s) => s[0].toUpperCase() + s.slice(1)).join(" ");
+  const crumb = path === "/" ? "Home" : path.slice(1).split("-").map((s) => s[0].toUpperCase() + s.slice(1)).join(" ");
   const initials = me ? me.name.split(" ").filter(Boolean).slice(0, 2).map((s) => s[0].toUpperCase()).join("") : "L";
+  if (isLandingPage) return <>{children}</>; // the homepage has its own layout
   if (isAuthPage) {
     return (
       <div className="shell-canvas">
         <div className="shell-frame" style={{ display: "block" }}>
           <header style={{ height: 56, display: "flex", alignItems: "center", padding: "0 20px", borderBottom: "1px solid var(--border-default)" }}>
-            <Link href="/" className="sidebar-logo" style={{ margin: 0 }}><span className="logo-mark">✓</span> Ledger</Link>
+            <Link href="/overview" className="sidebar-logo" style={{ margin: 0 }}><span className="logo-mark">✓</span> Ledger</Link>
           </header>
           <main style={{ padding: 24 }}>{children}</main>
         </div>
@@ -52,7 +54,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     <div className="shell-canvas">
       <div className="shell-frame">
         <aside className="sidebar" aria-label="Main">
-          <Link href="/" className="sidebar-logo"><span className="logo-mark">✓</span> Ledger</Link>
+          <Link href="/overview" className="sidebar-logo"><span className="logo-mark">✓</span> Ledger</Link>
           {NAV_GROUPS.map((group) => (
             <div key={group.label}>
               <div className="nav-group-label">{group.label}</div>

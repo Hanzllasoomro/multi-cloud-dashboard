@@ -16,7 +16,7 @@ export default function Demo() {
   const fc = currentMonthForecast(rows);
   const steps = [
     { n: 1, title: "Connect — read-only, least privilege", body: "One connection per cloud, read-only roles only, federation over static keys. No write access, no secrets in code.", href: "/connections" },
-    { n: 2, title: "See all clouds in one number", body: `Month-to-date spend across AWS, Azure and GCP: ${fmtMoneyFull(mtd)} (Oct 2026, estimated). One number, one currency, one cost basis — Billed, so it ties to invoices.`, href: "/" },
+    { n: 2, title: "See all clouds in one number", body: `Month-to-date spend across AWS, Azure and GCP: ${fmtMoneyFull(mtd)} (Oct 2026, estimated). One number, one currency, one cost basis — Billed, so it ties to invoices.`, href: "/overview" },
     { n: 3, title: "Find the March EC2 spike", body: anomaly ? `${anomaly.service}: actual ${fmtMoneyFull(anomaly.actual)} vs expected ${fmtMoneyFull(anomaly.expected)} (${anomaly.deltaPct}% over baseline), top contributor ${anomaly.contributors[0]?.label}. Median/MAD baseline, Purchase charges excluded so savings-plan buys never look like spikes.` : "See Anomalies.", href: "/anomalies" },
     { n: 4, title: "Budget breach, before it happens", body: `Total-cloud budget forecast ${fmtMoneyFull(fc.forecast)} against a $22,000 monthly budget — the forecast breach fires on forecast, not after the money is spent.`, href: "/budgets" },
     { n: 5, title: "Savings you can act on", body: `Open recommendations total ${fmtMoneyFull(savings)}/month (provider estimates, labelled as such). Every recommendation links to its resource and evidence, with realised savings verified afterwards.`, href: "/recommendations" },

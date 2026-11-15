@@ -144,7 +144,7 @@ export default function DemoStudio() {
           <h1>Demo Studio</h1>
         </div>
         <div className="page-actions">
-          <Link href="/" className="btn">Open Overview →</Link>
+          <Link href="/overview" className="btn">Open Overview →</Link>
           <Link href="/demo" className="btn-ghost">Walkthrough</Link>
         </div>
       </div>

@@ -40,7 +40,7 @@ export function BarChart({ data, stacked, horizontal }: { data: { label: string;
         const bw = Math.max(((W - 20) / data.length) * 0.6, 6);
         let y = H - 20;
         return d.values.map((v, j) => {
-          const h = (v / max) * (H - 40); const rect = <rect key={j} x={x} y={y - h} width={bw} height={h} rx={8} fill={SERIES[j % SERIES.length]}><title>{d.label}: ${Math.round(v).toLocaleString()}</title></rect>;
+          const h = (v / max) * (H - 40); const rect = <rect key={j} x={x} y={y - h} width={bw} height={h} rx={8} fill={SERIES[j % SERIES.length]}><title>{`${d.label}: $${Math.round(v).toLocaleString()}`}</title></rect>;
           y -= h; return rect;
         });
       })}
@@ -56,7 +56,7 @@ export function DonutChart({ data }: { data: { label: string; value: number }[] 
       <svg width="170" height="170" viewBox="0 0 170 170" role="img" aria-label="Donut chart">
         {data.map((d, i) => {
           const frac = d.value / total; const dash = frac * C; const off = -acc * C; acc += frac;
-          return <circle key={d.label} cx="85" cy="85" r={R} fill="none" stroke={SERIES[i % SERIES.length]} strokeWidth="26" strokeDasharray={`${dash} ${C - dash}`} strokeDashoffset={off} transform="rotate(-90 85 85)"><title>{d.label}: ${Math.round(d.value).toLocaleString()}</title></circle>;
+          return <circle key={d.label} cx="85" cy="85" r={R} fill="none" stroke={SERIES[i % SERIES.length]} strokeWidth="26" strokeDasharray={`${dash} ${C - dash}`} strokeDashoffset={off} transform="rotate(-90 85 85)"><title>{`${d.label}: $${Math.round(d.value).toLocaleString()}`}</title></circle>;
         })}
         <text x="85" y="85" textAnchor="middle" fontSize="13" fontWeight="700" fill="var(--text-primary)">${(total / 1000).toFixed(0)}K</text>
       </svg>

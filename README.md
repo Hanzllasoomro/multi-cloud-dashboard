@@ -196,9 +196,20 @@ and register once more — the account is then saved to
 plainly when no accounts exist on the server at all (via
 `/api/auth/status`, which reveals only that boolean — never emails).
 
+## Homepage (v1.9)
+
+`/` is a public landing page — hero, live preview of the Overview dashboard
+(real seeded numbers: MTD, forecast, savings, anomalies, provider split),
+features, how-it-works, cited industry proof (Flexera 2024, Gartner 2024),
+FAQ and CTA. Typography is Fraunces (display) + Inter (body) via
+`next/font/google`; animations are CSS + IntersectionObserver with
+`prefers-reduced-motion` respected. All visuals are inline SVG/CSS and real
+data charts — no binary images, so the page pushes cleanly. The dashboard
+moved from `/` to `/overview`; sign-in lands there.
+
 ## Routes
 
-Pages: `/` overview, `/login`, `/register`, `/demo`, `/explorer`, `/connections`, `/budgets`, `/anomalies`,
+Pages: `/` homepage, `/overview`, `/login`, `/register`, `/demo`, `/explorer`, `/connections`, `/budgets`, `/anomalies`,
 `/forecast`, `/commitments`, `/recommendations`, `/allocation`, `/reports`,
 `/data-health`, `/settings`.
 APIs: `/api/query` (accepts `?accountId=` managed ids and `?accounts=`
