@@ -20,7 +20,31 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const [theme, setTheme] = useState<"light" | "dark">("light");
   const [me, setMe] = useState<{ name: string; email: string; role: string } | null>(null);
   const [search, setSearch] = useState("");
+  // Sidebar visibility (v1.10.2): below 1024px the sidebar is a drawer
+  // opened by the hamburger; on desktop the « button collapses it manually
+  // and the choice persists across reloads (ledger:sidebar-collapsed).
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  // Initialised false on BOTH server and client (identical first render),
+  // then the stored choice is applied after hydration — reading
+  // localStorage in the initializer would render collapsed on the client
+  // but expanded on the server, a hydration mismatch that React resolves
+  // by keeping the server HTML (sidebar stuck open).
+  const [collapsed, setCollapsed] = useState(false);
+  useEffect(() => {
+    try { if (localStorage.getItem("ledger:sidebar-collapsed") === "1") setCollapsed(true); } catch { /* private mode */ }
+  }, []);
   const router = useRouter();
+  useEffect(() => {
+    try { localStorage.setItem("ledger:sidebar-collapsed", collapsed ? "1" : "0"); } catch { /* private mode — collapse just doesn't persist */ }
+  }, [collapsed]);
+  useEffect(() => { setDrawerOpen(false); }, [path]);
+  useEffect(() => {
+    if (!drawerOpen) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setDrawerOpen(false); };
+    document.addEventListener("keydown", onKey);
+    document.body.style.overflow = "hidden"; // scroll locks while the drawer is open
+    return () => { document.removeEventListener("keydown", onKey); document.body.style.overflow = ""; };
+  }, [drawerOpen]);
   const isAuthPage = path === "/login" || path === "/register";
   const isLandingPage = path === "/";
   useEffect(() => {
@@ -53,9 +77,14 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   }
   return (
     <div className="shell-canvas">
-      <div className="shell-frame">
-        <aside className="sidebar" aria-label="Main">
-          <Link href="/" className="sidebar-logo"><span className="logo-mark"><LogoMark size={32} /></span> Ledger</Link>
+      <div className={`shell-frame${collapsed ? " shell-collapsed" : ""}`}>
+        {drawerOpen && <div className="sidebar-backdrop" onClick={() => setDrawerOpen(false)} aria-hidden="true" />}
+        <aside className={`sidebar${drawerOpen ? " drawer-open" : ""}`} aria-label="Main">
+          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
+            <Link href="/" className="sidebar-logo"><span className="logo-mark"><LogoMark size={32} /></span> Ledger</Link>
+            <button className="sidebar-collapse-btn" onClick={() => setCollapsed(true)} aria-label="Collapse sidebar" title="Collapse sidebar">«</button>
+            <button className="sidebar-drawer-close" onClick={() => setDrawerOpen(false)} aria-label="Close sidebar">✕</button>
+          </div>
           {NAV_GROUPS.map((group) => (
             <div key={group.label}>
               <div className="nav-group-label">{group.label}</div>
@@ -66,6 +95,11 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           ))}
         </aside>
         <div className="shell-main">
+          <div className="mobile-topbar">
+            <button className="hamburger" onClick={() => { setCollapsed(false); setDrawerOpen(true); }} aria-label="Open sidebar">☰</button>
+            <Link href="/" className="mobile-topbar-logo"><span className="logo-mark"><LogoMark size={28} /></span> Ledger</Link>
+            <span className="mobile-topbar-crumb">{crumb}</span>
+          </div>
           <header className="topbar">
             <form className="search-pill" role="search" onSubmit={(e) => { e.preventDefault(); router.push("/explorer"); }}>
               <span aria-hidden="true">⌕</span>

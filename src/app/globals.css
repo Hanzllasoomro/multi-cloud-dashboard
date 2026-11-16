@@ -77,6 +77,17 @@ h1{font-size:28px;line-height:1.2;margin:0 0 4px} h2{font-size:17px;margin:0 0 8
 .sidebar-dark-card{margin-top:auto;background:var(--brand-900);color:#fff;border-radius:var(--radius-20);padding:16px}
 .sidebar-dark-card p{color:#C8DCCF;margin:6px 0 12px}
 .sidebar-dark-card a{color:#fff}
+/* v1.10.2 responsive sidebar: slim dark top bar + drawer + manual collapse */
+.mobile-topbar{display:none;align-items:center;gap:12px;background:var(--brand-900);color:#fff;padding:0 16px;height:56px;flex-shrink:0}
+.mobile-topbar .hamburger{background:transparent;border:0;color:#fff;font-size:20px;cursor:pointer;padding:8px;line-height:1}
+.mobile-topbar-logo{display:flex;align-items:center;gap:8px;color:#fff;text-decoration:none;font-weight:800;font-size:17px}
+.mobile-topbar-crumb{margin-left:auto;font-size:13px;color:#C8DCCF;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sidebar-collapse-btn{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border:1px solid var(--border-default);border-radius:8px;background:var(--bg-surface);color:var(--text-secondary);cursor:pointer;font-size:16px;flex-shrink:0;margin-top:2px}
+.sidebar-collapse-btn:hover{color:var(--text-primary);border-color:var(--text-tertiary)}
+.sidebar-drawer-close{display:none;align-items:center;justify-content:center;width:28px;height:28px;border:1px solid var(--border-default);border-radius:8px;background:var(--bg-surface);color:var(--text-secondary);cursor:pointer;font-size:14px;flex-shrink:0;margin-top:2px}
+.sidebar-backdrop{display:none}
+.shell-collapsed .sidebar{display:none}
+.shell-collapsed .mobile-topbar{display:flex}
 .shell-main{flex:1;min-width:0;display:flex;flex-direction:column}
 .topbar{display:flex;align-items:center;gap:12px;padding:16px 24px;border-bottom:1px solid var(--border-default);flex-wrap:wrap}
 .search-pill{display:flex;align-items:center;gap:8px;background:var(--bg-sunken);border:1px solid var(--border-default);border-radius:var(--radius-full);padding:8px 14px;flex:1;max-width:420px}
@@ -106,10 +117,21 @@ h1{font-size:28px;line-height:1.2;margin:0 0 4px} h2{font-size:17px;margin:0 0 8
 .hatched{background:repeating-linear-gradient(45deg,var(--n-100) 0 6px,var(--n-0) 6px 12px)}
 [data-theme="dark"] .hatched{background:repeating-linear-gradient(45deg,#223028 0 6px,#18211C 6px 12px)}
 @media(max-width:900px){
-  .shell-canvas{padding:8px}
-  .shell-frame{flex-direction:column;border-radius:20px}
-  .sidebar{width:auto;border-right:0;border-bottom:1px solid var(--border-default)}
-  .sidebar-dark-card{display:none}
   .shell-content{padding:16px}
   .topbar{padding:12px 16px}
+}
+/* Below 1024px the sidebar is a drawer, not a top strip. The breakpoint uses
+   63.9375rem (1023.98px) so the 1024px value itself belongs to the desktop
+   range — max-width:64rem would hide the sidebar AT exactly 1024px. */
+@media(max-width:63.9375rem){
+  .shell-canvas{padding:8px}
+  .shell-frame{border-radius:20px}
+  .mobile-topbar{display:flex}
+  .sidebar{position:fixed;top:0;left:0;bottom:0;z-index:60;width:272px;max-width:85vw;background:var(--bg-surface);border-right:1px solid var(--border-default);box-shadow:var(--shadow-md);transform:translateX(-105%);transition:transform .25s ease;overflow-y:auto}
+  .sidebar.drawer-open{transform:none}
+  .shell-collapsed .sidebar{display:flex}
+  .sidebar-backdrop{display:block;position:fixed;inset:0;background:rgba(15,20,28,.45);z-index:55}
+  .sidebar-collapse-btn{display:none}
+  .sidebar-drawer-close{display:inline-flex}
+  .sidebar-dark-card{display:none}
 }

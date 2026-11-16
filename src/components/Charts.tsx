@@ -87,7 +87,7 @@ export function LineChart({ series, labels, height = 220, band }: { series: { la
   const all = [...series.flatMap((s) => s.values), ...(band ? [...band.low, ...band.high] : [])];
   const max = Math.max(...all, 1);
   const pts = (vals: number[]) => vals.map((v, i) => `${8 + (i / Math.max(vals.length - 1, 1)) * (W - 16)},${H - 24 - (v / max) * (H - 44)}`).join(" ");
-  const bandPath = band ? `${pts(band.high)} L ${[...band.low].reverse().map((v, i) => { const idx = band.low.length - 1 - i; return `${8 + (idx / Math.max(band.low.length - 1, 1)) * (W - 16)},${H - 24 - (v / max) * (H - 44)}`; }).join(" ")} Z` : "";
+  const bandPath = band ? `M ${pts(band.high)} L ${[...band.low].reverse().map((v, i) => { const idx = band.low.length - 1 - i; return `${8 + (idx / Math.max(band.low.length - 1, 1)) * (W - 16)},${H - 24 - (v / max) * (H - 44)}`; }).join(" ")} Z` : "";
   return (
     <div>
       <svg viewBox={`0 0 ${W} ${H}`} width="100%" role="img" aria-label="Line chart">
