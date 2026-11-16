@@ -96,7 +96,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         </aside>
         <div className="shell-main">
           <div className="mobile-topbar">
-            <button className="hamburger" onClick={() => { setCollapsed(false); setDrawerOpen(true); }} aria-label="Open sidebar">☰</button>
+            <button className="hamburger" onClick={() => { setCollapsed(false); if (window.innerWidth < 1024) setDrawerOpen(true); }} aria-label="Open sidebar">☰</button>
             <Link href="/" className="mobile-topbar-logo"><span className="logo-mark"><LogoMark size={28} /></span> Ledger</Link>
             <span className="mobile-topbar-crumb">{crumb}</span>
           </div>
