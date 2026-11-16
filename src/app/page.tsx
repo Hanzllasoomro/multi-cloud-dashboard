@@ -15,6 +15,7 @@ import { currentMonthForecast, detectAnomalies, evaluateBudgets } from "../lib/i
 import { fmtMoneyCompact, fmtMoneyFull, fmtMonth } from "../lib/format";
 import { LineChart, DonutChart } from "../components/Charts";
 import "./landing.css";
+import { LogoMark } from "../components/Logo";
 
 function useReveal() {
   const ref = useRef<HTMLDivElement>(null);
@@ -83,7 +84,7 @@ export default function LandingPage() {
     <div className="landing" ref={rootRef}>
       <header className="lp-nav">
         <div className="lp-nav-inner">
-          <Link href="/" className="lp-logo"><span className="mark">✓</span> Ledger</Link>
+          <Link href="/" className="lp-logo"><span className="mark"><LogoMark size={30} /></span> Ledger</Link>
           <nav className="lp-nav-links" aria-label="Sections">
             <a href="#features">Features</a>
             <a href="#how">How it works</a>

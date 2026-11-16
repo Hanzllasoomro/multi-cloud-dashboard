@@ -67,7 +67,8 @@ h1{font-size:28px;line-height:1.2;margin:0 0 4px} h2{font-size:17px;margin:0 0 8
 .shell-frame{background:var(--bg-surface);border:1px solid var(--border-default);border-radius:var(--radius-24);box-shadow:var(--shadow-md);display:flex;overflow:hidden;min-height:calc(100vh - 32px)}
 .sidebar{width:232px;flex-shrink:0;padding:20px 16px;border-right:1px solid var(--border-default);display:flex;flex-direction:column;gap:4px}
 .sidebar-logo{display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--text-primary);font-weight:800;font-size:19px;margin-bottom:20px}
-.logo-mark{width:32px;height:32px;border-radius:50%;background:var(--brand-700);color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0}
+.logo-mark{width:32px;height:32px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
+.logo-mark svg{display:block;border-radius:9px}
 .nav-group-label{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-tertiary);font-weight:700;margin:18px 8px 6px}
 .nav-item{display:block;padding:9px 12px;border-radius:12px;color:var(--text-secondary);text-decoration:none;font-weight:500}
 .nav-item:hover{background:var(--bg-hover);color:var(--text-primary)}

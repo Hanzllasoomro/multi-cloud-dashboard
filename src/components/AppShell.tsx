@@ -3,6 +3,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import FreshnessIndicator from "./FreshnessIndicator";
+import { LogoMark } from "./Logo";
 import { DATA_AS_OF } from "../lib/types";
 const NAV_GROUPS = [
   { label: "Menu", items: [
@@ -43,7 +44,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       <div className="shell-canvas">
         <div className="shell-frame" style={{ display: "block" }}>
           <header style={{ height: 56, display: "flex", alignItems: "center", padding: "0 20px", borderBottom: "1px solid var(--border-default)" }}>
-            <Link href="/overview" className="sidebar-logo" style={{ margin: 0 }}><span className="logo-mark">✓</span> Ledger</Link>
+            <Link href="/" className="sidebar-logo" style={{ margin: 0 }}><span className="logo-mark"><LogoMark size={32} /></span> Ledger</Link>
           </header>
           <main style={{ padding: 24 }}>{children}</main>
         </div>
@@ -54,7 +55,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     <div className="shell-canvas">
       <div className="shell-frame">
         <aside className="sidebar" aria-label="Main">
-          <Link href="/overview" className="sidebar-logo"><span className="logo-mark">✓</span> Ledger</Link>
+          <Link href="/" className="sidebar-logo"><span className="logo-mark"><LogoMark size={32} /></span> Ledger</Link>
           {NAV_GROUPS.map((group) => (
             <div key={group.label}>
               <div className="nav-group-label">{group.label}</div>
